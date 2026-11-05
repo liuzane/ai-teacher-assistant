@@ -9,13 +9,16 @@ import com.liuzane.aiteacherassistant.service.DifyChatService;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
+import reactor.util.retry.Retry;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
@@ -37,6 +40,9 @@ public class DifyChatServiceImpl implements DifyChatService {
   /** 心跳间隔：超过该时长没有数据推送时发一次心跳，避免前端/网关长时间无数据而断流 */
   private static final Duration HEARTBEAT_INTERVAL = Duration.ofMinutes(1);
 
+  /** 网络瞬时错误时最多重试次数（Connection reset、超时等） */
+  private static final int MAX_RETRY_ATTEMPTS = 2;
+
   @Override
   public Flux<String> sendMessageStream(String query, String userId, String conversationId) {
     Map<String, Object> body = new HashMap<>();
@@ -47,22 +53,55 @@ public class DifyChatServiceImpl implements DifyChatService {
     if (conversationId != null && !conversationId.isBlank()) {
       body.put("conversation_id", conversationId);
     }
-    System.out.print("\nuri: " + difyApiUrl + "/chat-messages");
-    System.out.print("\n" + HttpHeaders.AUTHORIZATION + ": " + "Bearer " + apiKey);
-    System.out.print("\nbody: " + body);
+
     return webClient.post()
         .uri(difyApiUrl + "/chat-messages")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue(body)
-        .retrieve()
-        // SSE 响应按行分割，每行格式为 "data: {json}"，去掉前缀只保留事件 JSON
-        .bodyToFlux(String.class)
+        .exchangeToFlux(response -> handleSseResponse(response))
+        .retryWhen(Retry.backoff(MAX_RETRY_ATTEMPTS, Duration.ofSeconds(1))
+            .filter(t -> isRetryable(t))
+            .doBeforeRetry(signal -> log.warn("调用 Dify 流式接口失败，第 {} 次重试: {}",
+                signal.totalRetries() + 1, signal.failure().getMessage())))
         .map(line -> line.startsWith("data:") ? line.substring(5).trim() : line)
         .filter(data -> !data.isEmpty())
         .flatMap(this::translateDifyEvent)
         .doOnError(e -> log.error("调用 Dify 流式接口失败: {}", e.getMessage()))
         .transform(this::withHeartbeat);
+  }
+
+  /**
+   * 判断异常是否可重试：网络层瞬时错误（连接重置、超时、连接拒绝等）可重试，
+   * HTTP 4xx/5xx 不可重试（已由 handleSseResponse 转为 RuntimeException）。
+   */
+  private boolean isRetryable(Throwable t) {
+    String msg = t.getMessage() == null ? "" : t.getMessage().toLowerCase();
+    return msg.contains("connection reset")
+        || msg.contains("connection refused")
+        || msg.contains("timeout")
+        || msg.contains("timed out")
+        || msg.contains("unexpected end of stream")
+        || t instanceof java.io.IOException;
+  }
+
+  /**
+   * 统一处理 SSE 响应：非 2xx 时读取错误体并抛出带状态码和响应片段的异常；
+   * 2xx 时直接返回 body flux。
+   */
+  private Flux<String> handleSseResponse(ClientResponse response) {
+    HttpStatusCode status = response.statusCode();
+    if (status.is2xxSuccessful()) {
+      return response.bodyToFlux(String.class);
+    }
+    // 非 2xx：读取完整错误体后抛异常
+    return response.bodyToMono(String.class)
+        .flatMapMany(body -> {
+          String snippet = body == null ? "(empty)" : (body.length() > 300 ? body.substring(0, 300) + "..." : body);
+          String msg = String.format("调用 Dify 流式接口失败: HTTP %d, 响应片段=%s", status.value(), snippet);
+          log.error(msg);
+          return Flux.error(new RuntimeException(msg));
+        });
   }
 
   /**

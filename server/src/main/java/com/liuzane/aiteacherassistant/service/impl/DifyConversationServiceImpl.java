@@ -14,8 +14,10 @@ import com.liuzane.aiteacherassistant.service.DifyConversationService;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import lombok.extern.slf4j.Slf4j;
@@ -45,10 +47,7 @@ public class DifyConversationServiceImpl implements DifyConversationService {
         .uri(buildConversationsUri(userId, lastId, pageSize, sort))
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
         .accept(MediaType.APPLICATION_JSON)
-        .retrieve()
-        .bodyToMono(String.class)
-        .map(this::parseConversationList)
-        .doOnError(e -> log.error("获取 Dify 会话列表失败: {}", e.getMessage()));
+        .exchangeToMono(response -> handleResponse(response, this::parseConversationList, "获取 Dify 会话列表"));
   }
 
   @Override
@@ -60,10 +59,7 @@ public class DifyConversationServiceImpl implements DifyConversationService {
         .uri(buildMessagesUri(conversationId, userId, firstId, pageSize))
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
         .accept(MediaType.APPLICATION_JSON)
-        .retrieve()
-        .bodyToMono(String.class)
-        .map(this::parseConversationHistory)
-        .doOnError(e -> log.error("获取 Dify 会话历史消息失败: {}", e.getMessage()));
+        .exchangeToMono(response -> handleResponse(response, this::parseConversationHistory, "获取 Dify 会话历史消息"));
   }
 
   /**
@@ -160,6 +156,37 @@ public class DifyConversationServiceImpl implements DifyConversationService {
 
   private String encode(String value) {
     return URLEncoder.encode(value, StandardCharsets.UTF_8);
+  }
+
+  /**
+   * 统一处理 WebClient 响应：检查 HTTP 状态码，非 2xx 抛出带响应片段的异常；2xx 时调用解析函数。
+   *
+   * @param response    WebClient 响应
+   * @param parser      JSON 解析函数
+   * @param operation   操作描述（用于日志）
+   * @return 解析结果
+   */
+  private <T> Mono<T> handleResponse(ClientResponse response, java.util.function.Function<String, T> parser,
+      String operation) {
+    HttpStatusCode status = response.statusCode();
+    return response.bodyToMono(String.class)
+        .flatMap(body -> {
+          if (!status.is2xxSuccessful()) {
+            String snippet = body.length() > 200 ? body.substring(0, 200) + "..." : body;
+            String msg = String.format("%s 失败: HTTP %d, 响应片段=%s", operation, status.value(), snippet);
+            log.error(msg);
+            return Mono.error(new RuntimeException(msg));
+          }
+          try {
+            return Mono.just(parser.apply(body));
+          } catch (Exception e) {
+            String snippet = body.length() > 200 ? body.substring(0, 200) + "..." : body;
+            String msg = String.format("%s 响应解析失败: %s, HTTP %d, 响应片段=%s", operation, e.getMessage(),
+                status.value(), snippet);
+            log.error(msg, e);
+            return Mono.error(new RuntimeException(msg, e));
+          }
+        });
   }
 
   /**
