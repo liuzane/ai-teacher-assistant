@@ -1,0 +1,15 @@
+# 源码与 IDE
+src
+.mvn
+.vscode
+sql
+pom.xml
+
+# target 下只需要 jar，忽略其他产物
+target/classes
+target/generated-sources
+target/maven-status
+target/*.original
+
+# 系统文件
+.DS_Store

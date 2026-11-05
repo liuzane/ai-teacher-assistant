@@ -1,7 +1,26 @@
+# 依赖：镜像使用预构建的 dist，无需安装依赖
 node_modules
-dist
-.git
+
+# 源码与构建配置：dist 已包含产物，无需进入构建上下文
+src
+public
+index.html
+vite.config.ts
+tsconfig.json
+tsconfig.app.json
+tsconfig.node.json
+eslint.config.js
+package.json
+package-lock.json
+.env
+.env.development
+.env.production
+
+# 文档与 IDE
+README.md
+.gitignore
 .vscode
 .idea
+
+# 系统文件
 .DS_Store
-*.log
