@@ -9,10 +9,10 @@ pipeline {
 
   environment {
     // 后端
-    SERVER_IMAGE = "ai-teacher-assistant-server:latest"
+    SERVER_IMAGE = "ai-teacher-assistant-server:${params.IMAGE_TAG}"
 
     // 前端
-    WEB_IMAGE = "ai-teacher-assistant-web:latest"
+    WEB_IMAGE = "ai-teacher-assistant-web:${params.IMAGE_TAG}"
   }
 
   stages {
