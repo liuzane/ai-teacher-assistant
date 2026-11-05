@@ -16,6 +16,6 @@ CREATE TABLE `user` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
-INSERT INTO `user` (`id`, `username`, `email`, `password`, `createTime`, `updateTime`) VALUES (1, 'admin', 'admin@example.com', '123456', '2026-09-02 00:10:40', '2026-09-02 00:10:46');
+INSERT INTO `user` (`id`, `username`, `email`, `password`, `createTime`, `updateTime`) VALUES (1, 'admin', 'admin@example.com', 'admin', '2026-09-02 00:10:40', '2026-09-02 00:10:46');
 
 SET FOREIGN_KEY_CHECKS = 1;
