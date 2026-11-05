@@ -7,22 +7,12 @@ pipeline {
     maven 'Maven-3.9.16'
   }
 
-  // parameters {
-  //   booleanParam(name: 'DEPLOY_DOCKER', defaultValue: true, description: '是否部署 Docker 容器（取消勾选则只构建不部署）')
-  //   string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Docker 镜像标签')
-  // }
-
   environment {
     // 后端
     SERVER_IMAGE = "ai-teacher-assistant-server:latest"
-    SERVER_CONTAINER = 'ai-teacher-assistant-server'
 
     // 前端
     WEB_IMAGE = "ai-teacher-assistant-web:latest"
-    WEB_CONTAINER = 'ai-teacher-assistant-web'
-
-    // 网络
-    APP_NETWORK = 'app_network'
   }
 
   stages {
@@ -80,38 +70,16 @@ pipeline {
       }
     }
 
-    stage('重启 Docker 容器') {
-      when {
-        expression { return params.RESTART_DOCKER }
-      }
-      steps {
-        script {
-          // 容器由服务器上的 docker-compose 创建和管理，
-          // 这里只重启现有容器，不重建，避免出现与 compose 配置不一致的容器
-          sh "docker restart ${APP_CONTAINER}"
-        }
-      }
-    }
   }
 
   post {
     success {
-      script {
-        if (params.RESTART_DOCKER) {
-          echo "========== 重启成功 =========="
-          echo "后端容器: ${SERVER_CONTAINER}"
-          echo "镜像: ${SERVER_IMAGE}"
-          echo "日志: docker logs ${SERVER_CONTAINER} --tail 20"
-          echo "前端容器: ${WEB_CONTAINER}"
-          echo "镜像: ${WEB_IMAGE}"
-          echo "日志: docker logs ${WEB_CONTAINER} --tail 20"
-        } else {
-          echo '========== 构建成功（已跳过重启）=========='
-        }
-      }
+      echo '========== 构建成功 =========='
+      echo "后端镜像: ${SERVER_IMAGE}"
+      echo "前端镜像: ${WEB_IMAGE}"
     }
     failure {
-      echo '========== 构建/部署失败 =========='
+      echo '========== 构建失败 =========='
       echo '请检查上方日志'
     }
   }
