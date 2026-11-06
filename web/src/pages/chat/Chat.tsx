@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useParams } from 'react-router-dom'
 import { sendChatMessageStream } from '@/api/chat'
-import { getConversationMessages } from '@/api/conversation'
-import { getUserInfo } from '@/api/user'
+import { getConversationMessages, getConversations } from '@/api/conversation'
 import type { AppDispatch, RootState } from '@/store'
-import { clearUser, setUser } from '@/store/splices/userSlice'
+import { clearUser } from '@/store/splices/userSlice'
+import { clearStorage } from '@/utils/local-storage'
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/consts/request'
 import ChatHeader from './ChatHeader'
 import ChatHistoryList from './ChatHistoryList'
 import ChatMessageList, { type ChatMessage } from './ChatMessageList'
@@ -19,11 +20,18 @@ const TYPING_INTERVAL = 24
 const FAST_THRESHOLD = 50
 
 let idSeed = 0
+/**
+ * 生成消息唯一 ID
+ * @param 无
+ * @returns {string} 由时间戳与自增序号拼接而成的消息 ID
+ */
 const nextId = () => `msg-${Date.now()}-${idSeed++}`
 
 /**
  * 聊天页根组件：只负责布局、会话状态与后续的依赖注入 / 事件总线，
  * 消息展示、历史列表、输入发送分别交给子组件。
+ * @param 无
+ * @returns {JSX.Element} 聊天页布局（历史列表 + 消息区 + 输入框）
  */
 export default function Chat() {
   const [currentConversation, setCurrentConversation] = useState<ConversationListItem | null>(null)
@@ -35,9 +43,13 @@ export default function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
-  const [loadingHistory, setLoadingHistory] = useState(false)
-  /** 新建会话后递增，通知历史列表重新拉取 */
-  const [historyReloadToken, setHistoryReloadToken] = useState(0)
+  const [messagesLoading, setMessagesLoading] = useState(false)
+  /** 历史会话列表 */
+  const [conversationList, setConversationList] = useState<ConversationListItem[]>([])
+  const [conversationLoading, setConversationLoading] = useState(true)
+  const [conversationFailed, setConversationFailed] = useState(false)
+  /** 会话列表请求序号，用于丢弃过期响应 */
+  const conversationListRequestIdRef = useRef(0)
 
   /** 激活会话 ID 直接从路由参数派生，无需额外 state 同步 */
   const activeHistoryId = routeConversationId ?? null
@@ -55,32 +67,42 @@ export default function Chat() {
   /** 历史消息请求序号，用于丢弃过期响应 */
   const historyRequestIdRef = useRef(0)
 
-  // 接口需要 userId，未加载时拉取一次
-  useEffect(() => {
-    if (userInfo) return
-    getUserInfo()
-      .then(({ data, success }) => {
-        if (success) {
-          dispatch(setUser(data))
-        } else {
-          navigate('/login', { replace: true })
-        }
-      })
-      .catch(() => navigate('/login', { replace: true }))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  /**
+   * 拉取历史会话列表
+   * 使用 requestId 丢弃过期响应，避免并发覆盖
+   * @param {string} [userId] 显式传入用户 ID，缺省时使用 Redux 中的 userInfo.id
+   * @returns {void} 无返回值；内部更新 conversationList / conversationLoading / conversationFailed
+   */
+  const loadConversationList = async (userId?: string): Promise<ConversationListItem[]> => {
+    const targetId = userId ?? userInfo?.id
+    if (!targetId) return []
 
-  // 卸载时中断请求并停止打字机
-  useEffect(() => {
-    return () => {
-      abortRef.current?.()
-      historyRequestIdRef.current += 1
-      if (typingTimerRef.current !== null) {
-        clearInterval(typingTimerRef.current)
-      }
+    const requestId = conversationListRequestIdRef.current + 1
+    conversationListRequestIdRef.current = requestId
+
+    try {
+      const { data, success } = await getConversations({ userId: targetId, limit: 50 })
+      if (requestId !== conversationListRequestIdRef.current) return []
+      setConversationLoading(false)
+      const list = success ? data.data ?? [] : []
+      setConversationList(list)
+      setConversationFailed(!success)
+      return list
+    } catch {
+      if (requestId !== conversationListRequestIdRef.current) return []
+      setConversationLoading(false)
+      setConversationList([])
+      setConversationFailed(true)
+      return []
     }
-  }, [])
+  }
 
+  /**
+   * 停止流式输出
+   * 清理打字机定时器、待显示文本与当前助手消息标记，并把 streaming 复位为 false。
+   * @param 无
+   * @returns {void} 无返回值
+   */
   const stopStream = () => {
     if (typingTimerRef.current !== null) {
       clearInterval(typingTimerRef.current)
@@ -93,13 +115,22 @@ export default function Chat() {
     setStreaming(false)
   }
 
+  /**
+   * 局部更新当前正在生成的助手消息
+   * @param {(msg: ChatMessage) => ChatMessage} patch 接收旧消息、返回新消息的更新函数
+   * @returns {void} 无返回值；当前无进行中的助手消息时直接跳过
+   */
   const patchAssistant = (patch: (msg: ChatMessage) => ChatMessage) => {
     const id = assistantIdRef.current
     if (!id) return
     setMessages((prev) => prev.map((m) => (m.id === id ? patch(m) : m)))
   }
 
-  /** 打字机主循环：按固定节奏把 pendingRef 中的文本追加到当前回复上 */
+  /**
+   * 打字机主循环：按固定节奏把 pendingRef 中的文本追加到当前回复上
+   * @param 无
+   * @returns {void} 无返回值；流结束且文本全部打完后自动收尾并停止循环
+   */
   const startTypingLoop = () => {
     typingTimerRef.current = window.setInterval(() => {
       const pending = pendingRef.current
@@ -118,20 +149,31 @@ export default function Chat() {
     }, TYPING_INTERVAL)
   }
 
-  /** 退出登录：撤销用户信息并跳回登录页 */
+  /**
+   * 退出登录：清除本地存储的访问令牌与刷新令牌，重置 Redux 中的用户信息，
+   * 并通过 replace 导航跳转到登录页，避免浏览器回退到受保护页面。
+   * @param 无
+   * @returns {void} 无返回值
+   */
   const handleLogout = () => {
+    clearStorage(ACCESS_TOKEN_KEY)
+    clearStorage(REFRESH_TOKEN_KEY)
     dispatch(clearUser())
     navigate('/login', { replace: true })
   }
 
-  /** 加载指定会话的问答记录，并切换为当前会话 */
+  /**
+   * 加载指定会话的问答记录，并切换为当前会话
+   * @param {string} conversationId 会话 ID
+   * @returns {Promise<void>} 请求结束后解析；失败时把错误信息渲染为一条助手消息
+   */
   const loadMessages = async (conversationId: string) => {
     const requestId = historyRequestIdRef.current + 1
     historyRequestIdRef.current = requestId
 
     conversationIdRef.current = conversationId
     setMessages([])
-    setLoadingHistory(true)
+    setMessagesLoading(true)
 
     try {
       const { data, success } = await getConversationMessages({
@@ -170,18 +212,27 @@ export default function Chat() {
       ])
     } finally {
       if (requestId === historyRequestIdRef.current) {
-        setLoadingHistory(false)
+        setMessagesLoading(false)
       }
     }
   }
 
-  /** 点击历史对话：切换路由，由路由参数驱动 activeHistoryId 更新，进而触发 ChatHistoryList 匹配后写入 context */
+  /**
+   * 点击历史对话：切换路由，由路由参数驱动 activeHistoryId 更新，
+   * 进而触发 ChatHistoryList 匹配后写入 context
+   * @param {ConversationListItem} item 被点击的历史会话
+   * @returns {void} 无返回值；正在生成回复时忽略点击
+   */
   const handleSelectHistory = (item: ConversationListItem) => {
     if (streaming) return
     navigate(`/chat/${item.id}`)
   }
 
-  /** 新建对话：清空当前会话状态，首条消息发送时再由后端创建会话 */
+  /**
+   * 新建对话：清空当前会话状态，首条消息发送时再由后端创建会话
+   * @param 无
+   * @returns {void} 无返回值；正在生成回复时忽略点击
+   */
   const handleCreateConversation = () => {
     if (streaming) return
     // 丢弃可能仍在返回的历史消息响应
@@ -190,19 +241,16 @@ export default function Chat() {
     setCurrentConversation(null)
     setMessages([])
     setInput('')
-    setLoadingHistory(false)
+    setMessagesLoading(false)
     navigate('/chat')
   }
 
-  // 监听 context 中的 currentConversation 变化，才请求对话详情接口
-  useEffect(() => {
-    if (!currentConversation?.id || !userInfo?.id) return
-    // 当前会话已在展示或正在创建（新建会话会同步更新路由），无需重复拉取
-    if (currentConversation.id === conversationIdRef.current) return
-    void loadMessages(currentConversation.id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentConversation?.id, userInfo?.id])
-
+  /**
+   * 发送当前输入并启动流式回复
+   * 先追加用户消息与占位的助手消息，再发起 SSE 请求，由打字机循环逐字渲染回复。
+   * @param 无（读取组件内的 input 状态作为提问内容）
+   * @returns {void} 无返回值；输入为空、正在生成或用户信息未就绪时直接返回
+   */
   const handleSend = () => {
     const query = input.trim()
     if (!query || streaming || !userInfo?.id) return
@@ -242,7 +290,7 @@ export default function Chat() {
                   // 首轮对话会新建会话，同步路由后 activeHistoryId 自动更新为新会话
                   navigate(`/chat/${event.conversationId}`, { replace: true })
                   // 会话已在后端创建，立即刷新历史列表使其出现
-                  setHistoryReloadToken((token) => token + 1)
+                  loadConversationList()
                 }
               }
               break
@@ -295,8 +343,6 @@ export default function Chat() {
           }
           streamEndedRef.current = true
           patchAssistant((m) => ({ ...m, stage: undefined }))
-          // 会话内容/更新时间已变化，刷新历史列表
-          setHistoryReloadToken((token) => token + 1)
         },
         onError: (error) => {
           pendingRef.current = ''
@@ -313,16 +359,52 @@ export default function Chat() {
     startTypingLoop()
   }
 
+  
+  useEffect(() => {
+    const init = async () => {
+      const list = await loadConversationList(userInfo.id)
+      if (routeConversationId) {
+        const target = list.find((item) => item.id === routeConversationId)
+        if (target) {
+          setCurrentConversation(target)
+        }
+      }
+    }
+    init()
+
+    // 卸载时中断请求并停止打字机
+    return () => {
+      abortRef.current?.()
+      historyRequestIdRef.current += 1
+      if (typingTimerRef.current !== null) {
+        clearInterval(typingTimerRef.current)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 监听 context 中的 currentConversation 变化，才请求对话详情接口
+  useEffect(() => {
+    console.log('currentConversation', currentConversation)
+    console.log('conversationIdRef', conversationIdRef.current)
+    if (!currentConversation?.id || !userInfo?.id) return
+    // 当前会话已在展示或正在创建（新建会话会同步更新路由），无需重复拉取
+    if (currentConversation.id === conversationIdRef.current) return
+    void loadMessages(currentConversation.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentConversation?.id, userInfo?.id])
+
   return (
     <ChatContext.Provider value={{ currentConversation, setCurrentConversation }}>
       <div className="flex h-screen bg-gray-50">
         <ChatHistoryList
-          userId={userInfo?.id}
+          items={conversationList}
+          loading={conversationLoading}
+          failed={conversationFailed}
           activeId={activeHistoryId}
           onSelect={handleSelectHistory}
-          reloadToken={historyReloadToken}
           onCreate={handleCreateConversation}
-          createDisabled={streaming || loadingHistory || !userInfo?.id}
+          createDisabled={streaming || messagesLoading || !userInfo?.id}
         />
 
         <div className="flex min-w-0 flex-1 flex-col">
@@ -332,13 +414,13 @@ export default function Chat() {
             onLogout={handleLogout}
           />
 
-          <ChatMessageList messages={messages} />
+          <ChatMessageList loading={messagesLoading} messages={messages} />
 
           <ChatSender
             value={input}
             onChange={setInput}
             onSubmit={handleSend}
-            disabled={streaming || loadingHistory || !userInfo?.id}
+            disabled={streaming || messagesLoading || !userInfo?.id}
           />
         </div>
       </div>
