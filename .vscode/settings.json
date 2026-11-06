@@ -1,0 +1,8 @@
+{
+  "java.configuration.updateBuildConfiguration": "interactive",
+
+  // 强制 VSCode 使用项目 node_modules 中的 TypeScript 版本
+  "typescript.tsdk": "./web/node_modules/typescript/lib",
+  // 可选，开启后当检测到本地 TS 版本时，VSCode 会弹出提示询问是否使用
+  "typescript.enablePromptUseWorkspaceTsdk": true
+}

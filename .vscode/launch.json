@@ -1,0 +1,14 @@
+{
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Spring Boot-AiTeacherAssistantApplication<aiteacherassistant>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.liuzane.aiteacherassistant.AiTeacherAssistantApplication",
+      "projectName": "aiteacherassistant",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}

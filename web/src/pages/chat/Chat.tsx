@@ -38,7 +38,7 @@ export default function Chat() {
   const navigate = useNavigate()
   const { conversationId: routeConversationId } = useParams()
   const dispatch = useDispatch<AppDispatch>()
-  const userInfo = useSelector((state: RootState) => state.user.userInfo)
+  const userInfo = useSelector((state: RootState) => state.user.userInfo)!
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -74,7 +74,7 @@ export default function Chat() {
    * @returns {void} 无返回值；内部更新 conversationList / conversationLoading / conversationFailed
    */
   const loadConversationList = async (userId?: string): Promise<ConversationListItem[]> => {
-    const targetId = userId ?? userInfo?.id
+    const targetId = userId ?? userInfo.id
     if (!targetId) return []
 
     const requestId = conversationListRequestIdRef.current + 1
@@ -178,7 +178,7 @@ export default function Chat() {
     try {
       const { data, success } = await getConversationMessages({
         conversationId,
-        userId: userInfo?.id,
+        userId: userInfo.id,
         limit: 100,
       })
       if (requestId !== historyRequestIdRef.current) return
@@ -253,7 +253,7 @@ export default function Chat() {
    */
   const handleSend = () => {
     const query = input.trim()
-    if (!query || streaming || !userInfo?.id) return
+    if (!query || streaming || !userInfo.id) return
 
     const userMessage: ChatMessage = {
       id: nextId(),
@@ -387,12 +387,12 @@ export default function Chat() {
   useEffect(() => {
     console.log('currentConversation', currentConversation)
     console.log('conversationIdRef', conversationIdRef.current)
-    if (!currentConversation?.id || !userInfo?.id) return
+    if (!currentConversation?.id || !userInfo.id) return
     // 当前会话已在展示或正在创建（新建会话会同步更新路由），无需重复拉取
     if (currentConversation.id === conversationIdRef.current) return
     void loadMessages(currentConversation.id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentConversation?.id, userInfo?.id])
+  }, [currentConversation?.id, userInfo.id])
 
   return (
     <ChatContext.Provider value={{ currentConversation, setCurrentConversation }}>
@@ -404,7 +404,7 @@ export default function Chat() {
           activeId={activeHistoryId}
           onSelect={handleSelectHistory}
           onCreate={handleCreateConversation}
-          createDisabled={streaming || messagesLoading || !userInfo?.id}
+          createDisabled={streaming || messagesLoading || !userInfo.id}
         />
 
         <div className="flex min-w-0 flex-1 flex-col">
@@ -420,7 +420,7 @@ export default function Chat() {
             value={input}
             onChange={setInput}
             onSubmit={handleSend}
-            disabled={streaming || messagesLoading || !userInfo?.id}
+            disabled={streaming || messagesLoading || !userInfo.id}
           />
         </div>
       </div>
