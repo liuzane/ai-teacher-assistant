@@ -5,6 +5,26 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI教师助手</title>
+    <!-- 运行时依赖由 esm.sh CDN 提供，external 参数保证 react 单实例 -->
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@19",
+          "react/jsx-runtime": "https://esm.sh/react@19/jsx-runtime",
+          "react/jsx-dev-runtime": "https://esm.sh/react@19/jsx-dev-runtime",
+          "react/compiler-runtime": "https://esm.sh/react@19/compiler-runtime",
+          "react-dom": "https://esm.sh/react-dom@19?external=react",
+          "react-dom/client": "https://esm.sh/react-dom@19/client?external=react",
+          "react-redux": "https://esm.sh/react-redux@9?external=react,react-dom",
+          "react-router-dom": "https://esm.sh/react-router-dom@7?external=react,react-dom",
+          "react-markdown": "https://esm.sh/react-markdown@10?external=react",
+          "remark-gfm": "https://esm.sh/remark-gfm@4",
+          "remark-breaks": "https://esm.sh/remark-breaks@4",
+          "@reduxjs/toolkit": "https://esm.sh/@reduxjs/toolkit@2",
+          "axios": "https://esm.sh/axios@1"
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
