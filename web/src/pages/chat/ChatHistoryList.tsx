@@ -129,7 +129,7 @@ export default function ChatHistoryList({
           新建对话
         </button>
       </div>
-      <ul className="flex-1 overflow-y-auto pl-2 pb-4">{renderItems()}</ul>
+      <ul className="flex-1 overflow-y-auto pl-2 pb-4 scroll-area">{renderItems()}</ul>
     </aside>
   )
 }

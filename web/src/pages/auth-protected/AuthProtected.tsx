@@ -39,11 +39,9 @@ export default function AuthProtected() {
   // 用户信息未就绪时展示 loading，请求成功拿到用户信息后再渲染子页面
   if (!userInfo) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-3 text-sm text-gray-500">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-slate-600" />
-          <span>加载中...</span>
-        </div>
+      <div className="app-loading">
+        <div className="app-loading-spinner" />
+        <span>加载中…</span>
       </div>
     )
   }

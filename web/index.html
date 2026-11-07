@@ -5,6 +5,57 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI教师助手</title>
+    <!-- 首屏白屏 loading 样式 -->
+    <style>
+      .app-loading {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        background: #ffffff;
+        color: #6b7280;
+        font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+        font-size: 14px;
+        letter-spacing: 0.5px;
+        transition: opacity 0.25s ease;
+      }
+
+      .app-loading.is-hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .app-loading-spinner {
+        width: 36px;
+        height: 36px;
+        border: 3px solid #e5e7eb;
+        border-top-color: #4f46e5;
+        border-radius: 50%;
+        animation: app-loading-spin 0.8s linear infinite;
+      }
+
+      @keyframes app-loading-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .app-loading {
+          background: #16171d;
+          color: #9ca3af;
+        }
+
+        .app-loading-spinner {
+          border-color: #2e303a;
+          border-top-color: #c084fc;
+        }
+      }
+    </style>
     <!-- 运行时依赖由 esm.sh CDN 提供，external 参数保证 react 单实例 -->
     <script type="importmap">
       {
@@ -27,6 +78,10 @@
     </script>
   </head>
   <body>
+    <div id="app-loading" class="app-loading">
+      <div class="app-loading-spinner"></div>
+      <span>加载中…</span>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

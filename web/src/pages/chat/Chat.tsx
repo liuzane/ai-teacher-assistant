@@ -385,8 +385,6 @@ export default function Chat() {
 
   // 监听 context 中的 currentConversation 变化，才请求对话详情接口
   useEffect(() => {
-    console.log('currentConversation', currentConversation)
-    console.log('conversationIdRef', conversationIdRef.current)
     if (!currentConversation?.id || !userInfo.id) return
     // 当前会话已在展示或正在创建（新建会话会同步更新路由），无需重复拉取
     if (currentConversation.id === conversationIdRef.current) return

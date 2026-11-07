@@ -15,3 +15,10 @@ createRoot(document.getElementById('root')!).render(
     </Provider>
   </StrictMode>,
 )
+
+// React 首次渲染完成后淡出并移除 index.html 中的首屏 loading
+const appLoading = document.getElementById('app-loading')
+if (appLoading) {
+  appLoading.classList.add('is-hidden')
+  setTimeout(() => appLoading.remove(), 300)
+}
