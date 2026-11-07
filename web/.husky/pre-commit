@@ -1,2 +1,5 @@
-cd web
+#!/usr/bin/env sh
+
+cd "$(git rev-parse --show-toplevel)/web" || exit 1
+
 npx lint-staged
