@@ -1,0 +1,29 @@
+services:
+  ai-teacher-assistant-server:
+    image: ai-teacher-assistant-server:${SERVER_IMAGE_TAG:-latest}
+    container_name: ai-teacher-assistant-server
+    restart: unless-stopped
+
+    networks:
+      - app_network
+      - database_network
+
+  ai-teacher-assistant-web:
+    image: ai-teacher-assistant-web:${WEB_IMAGE_TAG:-latest}
+    container_name: ai-teacher-assistant-web
+    restart: unless-stopped
+    environment:
+      BACKEND_ORIGIN: "http://ai-teacher-assistant-server:8080"
+
+    depends_on:
+      - ai-teacher-assistant-server
+
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    external: true
+
+  database_network:
+    external: true

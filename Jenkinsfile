@@ -70,13 +70,29 @@ pipeline {
       }
     }
 
+    stage('重建 Docker 容器') {
+      when {
+        expression { return params.REBUILD_DOCKER_CONTAINER }
+      }
+      steps {
+        script {
+          sh "docker compose up -d --build ${APP_CONTAINER}"
+        }
+      }
+    }
   }
 
   post {
     success {
-      echo '========== 构建成功 =========='
-      echo "后端镜像: ${SERVER_IMAGE}"
-      echo "前端镜像: ${WEB_IMAGE}"
+      script {
+        if (params.REBUILD_DOCKER_CONTAINER) {
+          echo "========== 重建成功 =========="
+        } else {
+          echo '========== 构建成功（已跳过重建）=========='
+        }
+        echo "后端镜像: ${SERVER_IMAGE}"
+        echo "前端镜像: ${WEB_IMAGE}" 
+      }
     }
     failure {
       echo '========== 构建失败 =========='
