@@ -76,7 +76,7 @@ pipeline {
       }
       steps {
         script {
-          sh "docker compose up -d --build ${APP_CONTAINER}"
+          sh "docker compose up -d --build"
         }
       }
     }
