@@ -45,9 +45,7 @@ pipeline {
           script {
             echo 'Java 版本: ' + sh(script: 'java -version 2>&1', returnStdout: true).trim()
 
-            sh '''
-              mvn -B -DskipTests clean package
-            '''
+            sh 'mvn -B -DskipTests clean package'
           }
         }
       }
@@ -55,15 +53,11 @@ pipeline {
 
     stage('构建 Docker 镜像') {
       steps {
-        // 后端镜像（构建上下文为 server/，Dockerfile 中 COPY target/...）
-        sh """
-          docker build -t ${SERVER_IMAGE} -f server/Dockerfile server/
-        """
+        // 构建后端镜像
+        sh 'docker build -t ${SERVER_IMAGE} -f server/Dockerfile server/'
 
-        // 前端镜像（构建上下文为 web/，Dockerfile 中 COPY dist/ 和 nginx.conf）
-        sh """
-          docker build -t ${WEB_IMAGE} -f web/Dockerfile web/
-        """
+        // 构建前端镜像
+        sh 'docker build -t ${WEB_IMAGE} -f web/Dockerfile web/'
 
         // 清理悬空镜像
         sh 'docker image prune -f'
@@ -76,7 +70,7 @@ pipeline {
       }
       steps {
         script {
-          sh "docker compose up -d --build"
+          sh 'docker compose up -d --build'
         }
       }
     }
