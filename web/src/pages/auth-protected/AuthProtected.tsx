@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, Outlet } from 'react-router-dom'
 import { getUserInfo } from '@/api/user'
+import AppLoading from '@/components/AppLoading'
 import type { AppDispatch, RootState } from '@/store'
 import { setUser } from '@/store/splices/userSlice'
 
@@ -38,12 +39,7 @@ export default function AuthProtected() {
 
   // 用户信息未就绪时展示 loading，请求成功拿到用户信息后再渲染子页面
   if (!userInfo) {
-    return (
-      <div className="app-loading">
-        <div className="app-loading-spinner" />
-        <span>加载中…</span>
-      </div>
-    )
+    return <AppLoading />
   }
 
   return <Outlet />
