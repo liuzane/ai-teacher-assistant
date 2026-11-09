@@ -116,7 +116,7 @@ export default function ChatHistoryList({
   }
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white">
+    <aside className="flex w-64 shrink-0 flex-col border-r border-gray-200 bg-gray-50">
       <div className="flex items-center justify-between h-14 px-4">
         <h1 className="text-lg font-semibold text-gray-800">AI 教师助手</h1>
         <button

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useParams } from 'react-router-dom'
-import { sendChatMessageStream } from '@/api/chat'
+import { sendChatMessageStream, ChatStreamEventType } from '@/api/chat'
 import { getConversationMessages, getConversations } from '@/api/conversation'
 import type { AppDispatch, RootState } from '@/store'
 import { clearUser } from '@/store/splices/userSlice'
@@ -282,7 +282,7 @@ export default function Chat() {
         onEvent: (event) => {
           switch (event.type) {
             // 工作流开始：记录会话，用于下一轮续接
-            case 'WORKFLOW_STARTED':
+            case ChatStreamEventType.WORKFLOW_STARTED:
               if (event.conversationId) {
                 const isNew = !conversationIdRef.current
                 conversationIdRef.current = event.conversationId
@@ -294,13 +294,22 @@ export default function Chat() {
                 }
               }
               break
+            
+            // 意图识别阶段
+            case ChatStreamEventType.INTENT_RECOGNITION_STARTED:
+              patchAssistant((m) => ({ ...m, stage: '正在识别意图…' }))
+              break
+
+            case ChatStreamEventType.INTENT_RECOGNITION_FINISHED:
+              patchAssistant((m) => ({ ...m, stage: undefined }))
+              break
 
             // 知识库检索阶段
-            case 'KNOWLEDGE_RETRIEVAL_STARTED':
+            case ChatStreamEventType.KNOWLEDGE_RETRIEVAL_STARTED:
               patchAssistant((m) => ({ ...m, stage: '正在检索知识库…' }))
               break
 
-            case 'KNOWLEDGE_RETRIEVAL_FINISHED':
+            case ChatStreamEventType.KNOWLEDGE_RETRIEVAL_FINISHED:
               patchAssistant((m) => ({
                 ...m,
                 stage: '正在整理回答…',
@@ -309,12 +318,12 @@ export default function Chat() {
               break
 
             // LLM 节点开始产出
-            case 'TEXT_STARTED':
+            case ChatStreamEventType.TEXT_STARTED:
               patchAssistant((m) => ({ ...m, stage: '正在生成回答…' }))
               break
 
             // LLM 节点结束：若未收到任何流式片段，用节点完整输出兜底
-            case 'TEXT_FINISHED':
+            case ChatStreamEventType.TEXT_FINISHED:
               patchAssistant((m) => ({ ...m, stage: undefined }))
               if (!receivedTextRef.current && event.text) {
                 pendingRef.current += event.text
@@ -323,7 +332,7 @@ export default function Chat() {
               break
 
             // 流式文本增量
-            case 'MESSAGE':
+            case ChatStreamEventType.MESSAGE:
               if (event.text) {
                 pendingRef.current += event.text
                 receivedTextRef.current = true
@@ -331,7 +340,7 @@ export default function Chat() {
               break
 
             // 工作流结束
-            case 'WORKFLOW_FINISHED':
+            case ChatStreamEventType.WORKFLOW_FINISHED:
               streamEndedRef.current = true
               patchAssistant((m) => ({ ...m, stage: undefined }))
               break
@@ -394,7 +403,7 @@ export default function Chat() {
 
   return (
     <ChatContext.Provider value={{ currentConversation, setCurrentConversation }}>
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen">
         <ChatHistoryList
           items={conversationList}
           loading={conversationLoading}

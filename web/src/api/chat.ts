@@ -8,8 +8,10 @@ export interface ChatStreamParams {
 }
 
 /**
- * 后端 DifyServiceImpl 翻译后的事件类型：
+ * 后端 DifyServiceImpl 翻译后的事件类型（字符串枚举，供前后端对齐）：
  * - WORKFLOW_STARTED                 工作流开始（携带 conversationId / messageId）
+ * - INTENT_RECOGNITION_STARTED       意图识别开始
+ * - INTENT_RECOGNITION_FINISHED      意图识别结束
  * - KNOWLEDGE_RETRIEVAL_STARTED      知识库检索开始
  * - KNOWLEDGE_RETRIEVAL_FINISHED     知识库检索完成（携带 result）
  * - TEXT_STARTED                     LLM 节点开始
@@ -17,24 +19,23 @@ export interface ChatStreamParams {
  * - MESSAGE                          流式文本增量（answer）
  * - WORKFLOW_FINISHED                工作流结束
  */
-export type ChatStreamEventType =
-  | 'WORKFLOW_STARTED'
-  | 'KNOWLEDGE_RETRIEVAL_STARTED'
-  | 'KNOWLEDGE_RETRIEVAL_FINISHED'
-  | 'TEXT_STARTED'
-  | 'TEXT_FINISHED'
-  | 'MESSAGE'
-  | 'WORKFLOW_FINISHED'
+/**
+ * 事件类型常量表（const enum 模式：对象 + 派生 type，兼容 erasableSyntaxOnly）
+ */
+export const ChatStreamEventType = {
+  WORKFLOW_STARTED: 'WORKFLOW_STARTED',
+  INTENT_RECOGNITION_STARTED: 'INTENT_RECOGNITION_STARTED',
+  INTENT_RECOGNITION_FINISHED: 'INTENT_RECOGNITION_FINISHED',
+  KNOWLEDGE_RETRIEVAL_STARTED: 'KNOWLEDGE_RETRIEVAL_STARTED',
+  KNOWLEDGE_RETRIEVAL_FINISHED: 'KNOWLEDGE_RETRIEVAL_FINISHED',
+  TEXT_STARTED: 'TEXT_STARTED',
+  TEXT_FINISHED: 'TEXT_FINISHED',
+  MESSAGE: 'MESSAGE',
+  WORKFLOW_FINISHED: 'WORKFLOW_FINISHED',
+} as const
+export type ChatStreamEventType = typeof ChatStreamEventType[keyof typeof ChatStreamEventType]
 
-const KNOWN_EVENT_TYPES = new Set<string>([
-  'WORKFLOW_STARTED',
-  'KNOWLEDGE_RETRIEVAL_STARTED',
-  'KNOWLEDGE_RETRIEVAL_FINISHED',
-  'TEXT_STARTED',
-  'TEXT_FINISHED',
-  'MESSAGE',
-  'WORKFLOW_FINISHED',
-])
+const KNOWN_EVENT_TYPES = new Set<string>(Object.values(ChatStreamEventType))
 
 export interface ChatStreamEvent {
   type: ChatStreamEventType
@@ -68,7 +69,7 @@ function readString(payload: Record<string, unknown>, key: string): string | und
  */
 function parseSseData(raw: string): ChatStreamEvent | null {
   if (raw === '[DONE]') {
-    return { type: 'WORKFLOW_FINISHED' }
+    return { type: ChatStreamEventType.WORKFLOW_FINISHED }
   }
   try {
     const payload = JSON.parse(raw) as Record<string, unknown>
@@ -87,7 +88,7 @@ function parseSseData(raw: string): ChatStreamEvent | null {
   } catch (error) {
     // 非 JSON：按纯文本增量处理
     if (error instanceof SyntaxError) {
-      return { type: 'MESSAGE', text: raw }
+      return { type: ChatStreamEventType.MESSAGE, text: raw }
     }
     throw error
   }
@@ -161,7 +162,7 @@ export function sendChatMessageStream(
           }
           callbacks.onEvent(event)
 
-          if (event.type === 'WORKFLOW_FINISHED') {
+          if (event.type === ChatStreamEventType.WORKFLOW_FINISHED) {
             finished = true
             break
           }

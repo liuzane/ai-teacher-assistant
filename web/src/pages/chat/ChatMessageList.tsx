@@ -54,12 +54,12 @@ export default function ChatMessageList({ loading, messages }: ChatMessageListPr
             return (
               <div key={message.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`max-w-[80%] rounded-lg p-4 text-sm leading-6 break-words ${
+                  className={`${isUser ? 'max-w-[80%]' : 'w-full'} rounded-lg p-2 text-sm leading-6 break-words ${
                     isUser
                       ? 'whitespace-pre-wrap bg-indigo-600 text-white'
                       : message.status === 'error'
                         ? 'whitespace-pre-wrap bg-red-50 text-red-600'
-                        : 'bg-white text-gray-800 shadow-sm'
+                        : 'text-gray-800'
                   }`}
                 >
                   {isUser || message.status === 'error' ? (

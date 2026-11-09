@@ -149,11 +149,16 @@ public class DifyChatServiceImpl implements DifyChatService {
 
           JsonNode data = node.path("data");
           String nodeType = data.path("node_type").asText();
+          String nodeTitle = data.path("title").asText();
 
           if (nodeType.equals("knowledge-retrieval")) {
             return Flux.just(toJson("KNOWLEDGE_RETRIEVAL_STARTED", obj));
           } else if (nodeType.equals("llm")) {
-            return Flux.just(toJson("TEXT_STARTED", obj));
+            if (nodeTitle.contains("意图识别")) {
+              return Flux.just(toJson("INTENT_RECOGNITION_STARTED", obj));
+            } else {
+              return Flux.just(toJson("TEXT_STARTED", obj));
+            }
           }
         }
 
@@ -164,6 +169,7 @@ public class DifyChatServiceImpl implements DifyChatService {
 
           JsonNode data = node.path("data");
           String nodeType = data.path("node_type").asText();
+          String nodeTitle = data.path("title").asText();
 
           if ("knowledge-retrieval".equals(nodeType)) {
             JsonNode result = data.path("outputs").path("result");
@@ -171,8 +177,12 @@ public class DifyChatServiceImpl implements DifyChatService {
             obj.set("result", result.isArray() ? result : objectMapper.createArrayNode());
             return Flux.just(toJson("KNOWLEDGE_RETRIEVAL_FINISHED", obj));
           } else if ("llm".equals(nodeType)) {
-            obj.put("text", data.path("outputs").path("text").asText(""));
-            return Flux.just(toJson("TEXT_FINISHED", obj));
+            if (nodeTitle.contains("意图识别")) {
+              return Flux.just(toJson("INTENT_RECOGNITION_FINISHED", obj));
+            } else {
+              obj.put("text", data.path("outputs").path("text").asText(""));
+              return Flux.just(toJson("TEXT_FINISHED", obj));
+            }
           }
           // 其他节点类型（start/end/if-else/代码节点等）不往下传
           return Flux.empty();

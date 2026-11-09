@@ -59,7 +59,7 @@ public class DifyConversationServiceImpl implements DifyConversationService {
         .uri(buildMessagesUri(conversationId, userId, firstId, pageSize))
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
         .accept(MediaType.APPLICATION_JSON)
-        .exchangeToMono(response -> handleResponse(response, this::parseConversationHistory, "获取 Dify 会话历史消息"));
+        .exchangeToMono(response -> handleResponse(response, this::parseConversationMessages, "获取 Dify 会话历史消息"));
   }
 
   /**
@@ -90,7 +90,7 @@ public class DifyConversationServiceImpl implements DifyConversationService {
    * @param body 响应体
    * @return 会话历史消息
    */
-  private ConversationMessageResponse parseConversationHistory(String body) {
+  private ConversationMessageResponse parseConversationMessages(String body) {
     JsonNode root = objectMapper.readTree(body);
 
     List<ConversationMessageItem> items = new ArrayList<>();
