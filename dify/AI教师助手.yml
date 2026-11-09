@@ -1,0 +1,513 @@
+app:
+  description: 工作流基础模板 ，一个可以使用知识库的聊天机器人。
+  icon: 📑
+  icon_background: '#E0F2FE'
+  icon_type: emoji
+  mode: advanced-chat
+  name: AI教师助手
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/openai_api_compatible:0.0.73@4cf123ffaa4556f079bed6c47f3a462cc825504b859b183239e74eb19136a4b5
+    version: null
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/zhipuai:0.0.37@eba58f6a6c69a8071b6d2a31fc622f409c2b7a50efdd0702e2d78df7243c3468
+    version: null
+kind: app
+version: 0.7.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: 1711528915811-source-1711528917469-target
+      selected: false
+      source: '1711528915811'
+      sourceHandle: source
+      target: '1711528917469'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+      id: 1711528917469-source-1793342964344-target
+      selected: false
+      source: '1711528917469'
+      sourceHandle: source
+      target: '1793342964344'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: llm
+      id: 1711528914102-source-1794194861187-target
+      selected: false
+      source: '1711528914102'
+      sourceHandle: source
+      target: '1794194861187'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: knowledge-retrieval
+      id: 1794195101243-true-1711528915811-target
+      selected: false
+      source: '1794195101243'
+      sourceHandle: 'true'
+      target: '1711528915811'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: if-else
+      id: 1794194861187-source-1794195101243-target
+      selected: false
+      source: '1794194861187'
+      sourceHandle: source
+      target: '1794195101243'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: llm
+      id: 1794195101243-false-1794212625197-target
+      selected: false
+      source: '1794195101243'
+      sourceHandle: 'false'
+      target: '1794212625197'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+      id: 1794212625197-source-1794212726604-target
+      source: '1794212625197'
+      sourceHandle: source
+      target: '1794212726604'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: 开始
+        type: start
+        variables: []
+      height: 73
+      id: '1711528914102'
+      position:
+        x: 369.64903266159877
+        y: 261
+      positionAbsolute:
+        x: 369.64903266159877
+        y: 261
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        dataset_ids:
+        - gGlVyAba9R2+0E+SbvU5X9iB+Xx9n4SYtN6WTDRHQdJ6mqlXYfoskFs5LKyKo3RG
+        - z6/ZNwNlYaB4UB75aS6S4bM2NBQnrl3WB+0brbN81ul47ObAl9FhhAXy5XlOJl/C
+        - 5b4xPQRMJVbKe4qzAw7bxZFMH61OkkYjW1/QXcg9Evo8M3BQnDCfrMjxSM6BAc8m
+        desc: 这个功能让你能够从知识库中查找与用户问题有关的文本内容。
+        multiple_retrieval_config:
+          reranking_enable: true
+          reranking_mode: reranking_model
+          reranking_model:
+            model: /models/qwen3-reranker-0.6b-q8_0.gguf
+            provider: langgenius/openai_api_compatible/openai_api_compatible
+          score_threshold: null
+          top_k: 4
+        query_attachment_selector: []
+        query_variable_selector:
+        - '1794194861187'
+        - structured_output
+        - retrieval_keywords
+        retrieval_mode: multiple
+        selected: false
+        single_retrieval_config:
+          model:
+            completion_params:
+              frequency_penalty: 0
+              max_tokens: 512
+              presence_penalty: 0
+              temperature: 0
+              top_p: 1
+            mode: chat
+            name: gpt-3.5-turbo
+            provider: openai
+        title: 知识检索
+        type: knowledge-retrieval
+      dragging: false
+      height: 134
+      id: '1711528915811'
+      position:
+        x: 1266.9872504306954
+        y: 282
+      positionAbsolute:
+        x: 1266.9872504306954
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - '1711528915811'
+          - result
+        desc: ''
+        memory:
+          query_prompt_template: '{{#sys.query#}}
+
+
+            {{#sys.files#}}'
+          role_prefix:
+            assistant: ''
+            user: ''
+          window:
+            enabled: false
+            size: 50
+        model:
+          completion_params:
+            thinking: true
+          mode: chat
+          name: glm-4.7-flash
+          provider: langgenius/zhipuai/zhipuai
+        prompt_config:
+          jinja2_variables: []
+        prompt_template:
+        - edition_type: basic
+          id: 69321569-a8dc-4b21-ad1f-e713e1de1999
+          role: system
+          text: "你是一名小学教师助手，名字叫“小老师”。你必须用温柔、耐心、适合小学生理解的语言回答。\n\n【最高规则】\n1. 内容部分只根据“教学资料”回答，绝对不能编造教学资料里没有的内容（例子除外）。\n\
+            2. 如果教学资料中有相关内容，优先照着教学资料回答，按照【有相关内容时的输出模板】输出。\n3. 如果教学资料中没有相关内容，按照【没有相关内容时的输出模板】输出。\n\
+            4. 举例子时可以编造小学生容易理解的例子。\n5. 如果有课文图片要附带课文图片。\n6. 输出必须使用 Markdown 格式组织内容：\n\
+            \   - 内容较多或有多个知识点时，使用 `##` 二级标题分小节；\n   - 并列的知识点必须使用 `-` 无序列表；\n   - 核心词、关键词使用\
+            \ **加粗** 强调；\n   - 图片只使用 Markdown 图片语法 `![](图片地址)`，不要单独输出裸露的图片链接；\n  \
+            \ - 请尽量保留“教学资料”中已有的 Markdown 结构，不要全部改写成纯文本。\n\n【有相关内容时的输出模板】\n亲爱的小朋友，你好呀！我是你的教师助手。\n\
+            {回答内容}\n希望这个解释能帮你弄明白哦～如果还有不懂的地方，随时来问老师呀！\n\n**相关课文：**\n![](https://xxxxx.jpg)\n\
+            \n【没有相关内容时的输出模板】\n亲爱的小朋友，你好呀！我是你的教师助手。\n我在当前教学资料里暂时没有找到相关内容。\n你可以去问问老师，老师会帮你解答哦～\n\
+            \n【没有资料时固定输出】\n当前教学资料中没有找到相关内容。\n\n【示例】\n亲爱的小朋友，你好呀！我是你的教师助手。\n根据我们的教学资料，分数是这样定义的：把一个物体或一个图形平均分成若干份，表示这样的一份或几份的数，叫做分数。\n\
+            \n简单来说，就是要把东西分给几个人看，而且要分得一样多，这样的一份或者几份，就是分数啦。\n\n**相关课文：**\n![](https://xxxxx.jpg)\n\
+            \n举个例子：\n比如说，把一个苹果平均切成4块，如果你拿走了2块，那你拿到的就是苹果的 2/4。\n\n希望这个解释能帮你理解哦！\n\n\
+            【用户问题】\n{{#sys.query#}}\n\n【意图关键词】\n{{#1794194861187.structured_output.retrieval_keywords#}}\n\
+            \n【上下文】\n{{#context#}}"
+        reasoning_format: separated
+        selected: true
+        structured_output_enabled: false
+        title: 生成内容
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 88
+      id: '1711528917469'
+      position:
+        x: 1559.6487548202206
+        y: 282
+      positionAbsolute:
+        x: 1559.6487548202206
+        y: 282
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        answer: '{{#1711528917469.text#}}'
+        selected: false
+        title: 内容输出
+        type: answer
+        variables: []
+      height: 103
+      id: '1793342964344'
+      position:
+        x: 1848.839847932742
+        y: 282
+      positionAbsolute:
+        x: 1848.839847932742
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - sys
+          - query
+        memory:
+          query_prompt_template: '{{#sys.query#}}
+
+
+            {{#sys.files#}}'
+          role_prefix:
+            assistant: ''
+            user: ''
+          window:
+            enabled: false
+            size: 50
+        model:
+          completion_params: {}
+          mode: chat
+          name: glm-4.5-flash
+          provider: langgenius/zhipuai/zhipuai
+        prompt_template:
+        - id: 651c4d12-4b4f-408f-a10b-cda2f751bf29
+          role: system
+          text: '你是一个查询路由器，服务于一个面向小学生的教学助手。你的任务不是回答问题，而是判断当前用户输入是否需要从“教学资料知识库”中检索新内容，并输出结构化结果。
+
+
+            # 判定规则
+
+            默认 need_retrieval = true：
+
+            - 用户提出了关于课文内容、概念定义、知识点、例题等需要查阅教学资料才能准确回答的/问题。
+
+            - 用户的问题指向知识库中可能存在的“事实性/知识性”内容。
+
+
+            need_retrieval = false（满足以下任一情形）：
+
+            1. 问候、感谢、告别、自我介绍等社交寒暄（如“你好”“谢谢”“再见”）。
+
+            2. 纯闲聊、情绪表达、与教学内容无关的话题。
+
+            3. 纯计算或纯逻辑题，且不需要参考特定教学资料（如“1+1等于几”）。
+
+
+            # 查询改写
+
+            如果 need_retrieval = true，将用户问题改写成简洁、完整、适合知识库语义检索的查询。保留原问题中的核心学科词汇和实体，去掉语气词、冗余修饰。如果用户问题本身已经清晰完整，可以保持原样。
+
+
+            # 输出格式
+
+            严格输出 JSON，不要加任何解释、Markdown 代码块或多余文本：
+
+            {"need_retrieval": true/false, "retrieval_keywords": "要搜索的关键字，空格分开", "reason":
+            "一句话判断理由"}
+
+
+            【用户问题】
+
+            {{#sys.query#}}
+
+
+            【上下文】
+
+            {{#context#}}'
+        reasoning_format: separated
+        selected: false
+        structured_output:
+          schema:
+            additionalProperties: false
+            properties:
+              need_retrieval:
+                description: 是否需要知识库检索
+                type: boolean
+              reason:
+                description: 判断理由
+                type: string
+              retrieval_keywords:
+                description: 知识库检索关键词
+                type: string
+            required:
+            - need_retrieval
+            - reason
+            type: object
+        structured_output_enabled: true
+        title: 意图识别
+        type: llm
+        vision:
+          enabled: false
+      height: 88
+      id: '1794194861187'
+      position:
+        x: 672.2182041569416
+        y: 282
+      positionAbsolute:
+        x: 672.2182041569416
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: is
+            id: 22b1d589-e37f-4388-849d-ca12a2c765d0
+            value: true
+            varType: boolean
+            variable_selector:
+            - '1794194861187'
+            - structured_output
+            - need_retrieval
+          id: 'true'
+          logical_operator: and
+        selected: false
+        title: 条件分支
+        type: if-else
+      height: 148
+      id: '1794195101243'
+      position:
+        x: 970.9414039584155
+        y: 282
+      positionAbsolute:
+        x: 970.9414039584155
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - '1794194861187'
+          - structured_output
+        memory:
+          query_prompt_template: '{{#sys.query#}}
+
+
+            {{#sys.files#}}'
+          role_prefix:
+            assistant: ''
+            user: ''
+          window:
+            enabled: false
+            size: 50
+        model:
+          completion_params: {}
+          mode: chat
+          name: glm-4.5-flash
+          provider: langgenius/zhipuai/zhipuai
+        prompt_template:
+        - id: d958f2de-978a-4c49-b995-71b6acc85c05
+          role: system
+          text: "你是小学教师助手“小老师”。你必须用温柔、耐心、适合小学生理解的语言和小朋友说话。\n\n【当前模式】\n无知识检索 / 无关内容回复模式。\n\
+            本轮不检索教学资料，不引用教学资料，不输出“相关课文”和课文图片。\n\n【你的任务】\n根据用户输入{{#sys.query#}}生成一段简短、友好、自然的回复。只处理以下情况：\n\
+            1. 问候、感谢、告别、自我介绍等社交寒暄；\n2. 纯闲聊、情绪表达、与教学内容无关的话题；\n3. 纯计算或纯逻辑题，且不需要参考特定教学资料。\n\
+            \n【必须遵守的规则】\n1. 绝对不能编造教学资料里的课文内容、概念定义、知识点、例题。\n2. 不要输出“根据教学资料”“相关课文”“课文图片”等内容。\n\
+            3. 不要展示任何图片链接。\n4. 语气要温柔、耐心，句子要短，适合小学生理解。\n5. 社交寒暄要自然回应，可以简短引导：“有学习上的问题随时来问老师呀。”\n\
+            6. 纯计算或纯逻辑题可以直接给出答案和简单说明，但不要假装来自教学资料。\n7. 如果发现用户其实在问课文知识、概念定义等需要查资料的问题，不要硬答，也不要编造，要温柔地说：\n\
+            \   “这个问题需要查一查教学资料，你可以问问老师，老师会帮你解答哦～”\n8. 只输出给小朋友看的回复，不要输出 JSON、分析过程、检索关键词或额外说明。\n\
+            \n【输出风格】\n亲爱的小朋友，你好呀！我是你的教师助手。\n{简短温柔的回复}\n如果还有学习上的问题，随时来问老师呀！\n\n【示例1】\n\
+            用户：你好呀！\n回复：\n亲爱的小朋友，你好呀！我是你的教师助手。\n你好呀！很高兴见到你～有学习上的问题随时来问老师哦。\n如果还有学习上的问题，随时来问老师呀！\n\
+            \n【示例2】\n用户：谢谢你，小老师！\n回复：\n亲爱的小朋友，你好呀！我是你的教师助手。\n不用谢呀，能帮到你老师很开心～继续加油哦！\n\
+            如果还有学习上的问题，随时来问老师呀！\n\n【示例3】\n用户：1+1等于几？\n回复：\n亲爱的小朋友，你好呀！我是你的教师助手。\n\
+            1+1等于2呀。你可以伸出一个小手指，再伸出一个小手指，数一数就是2啦。\n如果还有学习上的问题，随时来问老师呀！\n\n【示例4】\n用户：分数是什么？\n\
+            回复：\n亲爱的小朋友，你好呀！我是你的教师助手。\n这个问题需要查一查教学资料，你可以问问老师，老师会帮你解答哦～\n如果还有学习上的问题，随时来问老师呀。\n\
+            \n【意图识别输出】\n{{#context#}}"
+        reasoning_format: separated
+        selected: false
+        title: 无关内容生成
+        type: llm
+        vision:
+          enabled: false
+      height: 88
+      id: '1794212625197'
+      position:
+        x: 1266.9872504306954
+        y: 455
+      positionAbsolute:
+        x: 1266.9872504306954
+        y: 455
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        answer: '{{#1794212625197.text#}}'
+        selected: false
+        title: 无关内容输出
+        type: answer
+        variables: []
+      height: 103
+      id: '1794212726604'
+      position:
+        x: 1568.9872504306954
+        y: 455
+      positionAbsolute:
+        x: 1568.9872504306954
+        y: 455
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    viewport:
+      x: -344.6611459733698
+      y: 280.47102433208283
+      zoom: 0.49783800799975153
+  rag_pipeline_variables: []
