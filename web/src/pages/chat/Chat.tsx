@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
+import { useSelector } from 'react-redux'
 import { useNavigate, useParams } from 'react-router-dom'
 import { sendChatMessageStream, ChatStreamEventType } from '@/api/chat'
 import { getConversationMessages, getConversations } from '@/api/conversation'
-import type { AppDispatch, RootState } from '@/store'
-import { clearUser } from '@/store/splices/userSlice'
-import { clearStorage } from '@/utils/local-storage'
-import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/consts/request'
+import type { RootState } from '@/store'
 import ChatHeader from './ChatHeader'
 import ChatHistoryList from './ChatHistoryList'
 import ChatMessageList, { type ChatMessage } from './ChatMessageList'
@@ -37,7 +34,6 @@ export default function Chat() {
   const [currentConversation, setCurrentConversation] = useState<ConversationListItem | null>(null)
   const navigate = useNavigate()
   const { conversationId: routeConversationId } = useParams()
-  const dispatch = useDispatch<AppDispatch>()
   const userInfo = useSelector((state: RootState) => state.user.userInfo)!
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -48,6 +44,8 @@ export default function Chat() {
   const [conversationList, setConversationList] = useState<ConversationListItem[]>([])
   const [conversationLoading, setConversationLoading] = useState(true)
   const [conversationFailed, setConversationFailed] = useState(false)
+  /** 小屏（<1024px）下历史会话抽屉是否展开 */
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   /** 会话列表请求序号，用于丢弃过期响应 */
   const conversationListRequestIdRef = useRef(0)
 
@@ -150,19 +148,6 @@ export default function Chat() {
   }
 
   /**
-   * 退出登录：清除本地存储的访问令牌与刷新令牌，重置 Redux 中的用户信息，
-   * 并通过 replace 导航跳转到登录页，避免浏览器回退到受保护页面。
-   * @param 无
-   * @returns {void} 无返回值
-   */
-  const handleLogout = () => {
-    clearStorage(ACCESS_TOKEN_KEY)
-    clearStorage(REFRESH_TOKEN_KEY)
-    dispatch(clearUser())
-    navigate('/login', { replace: true })
-  }
-
-  /**
    * 加载指定会话的问答记录，并切换为当前会话
    * @param {string} conversationId 会话 ID
    * @returns {Promise<void>} 请求结束后解析；失败时把错误信息渲染为一条助手消息
@@ -225,6 +210,7 @@ export default function Chat() {
    */
   const handleSelectHistory = (item: ConversationListItem) => {
     if (streaming) return
+    setSidebarOpen(false)
     navigate(`/chat/${item.id}`)
   }
 
@@ -242,6 +228,7 @@ export default function Chat() {
     setMessages([])
     setInput('')
     setMessagesLoading(false)
+    setSidebarOpen(false)
     navigate('/chat')
   }
 
@@ -368,7 +355,6 @@ export default function Chat() {
     startTypingLoop()
   }
 
-  
   useEffect(() => {
     const init = async () => {
       const list = await loadConversationList(userInfo.id)
@@ -412,13 +398,18 @@ export default function Chat() {
           onSelect={handleSelectHistory}
           onCreate={handleCreateConversation}
           createDisabled={streaming || messagesLoading || !userInfo.id}
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          username={userInfo?.username}
         />
 
         <div className="flex min-w-0 flex-1 flex-col">
           <ChatHeader
             username={userInfo?.username}
             conversationName={currentConversation?.name}
-            onLogout={handleLogout}
+            onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+            onCreate={handleCreateConversation}
+            createDisabled={streaming || messagesLoading || !userInfo.id}
           />
 
           <ChatMessageList loading={messagesLoading} messages={messages} />

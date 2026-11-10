@@ -1,5 +1,6 @@
 import type { ConversationListItem } from '@/api/conversation'
 import { useChatContext } from './chatContext'
+import ChatLogout from './ChatLogout'
 
 interface ChatHistoryListProps {
   /** 会话列表数据 */
@@ -14,6 +15,12 @@ interface ChatHistoryListProps {
   onCreate: () => void
   /** 生成中禁止新建，避免打断当前回复 */
   createDisabled?: boolean
+  /** 小屏（<1024px）抽屉是否展开 */
+  open?: boolean
+  /** 关闭小屏抽屉 */
+  onClose?: () => void
+  /** 当前登录用户名，小屏下显示在侧边栏底部 */
+  username?: string
 }
 
 /**
@@ -68,6 +75,9 @@ export default function ChatHistoryList({
   onSelect,
   onCreate,
   createDisabled = false,
+  open = false,
+  onClose,
+  username,
 }: ChatHistoryListProps) {
   const { setCurrentConversation } = useChatContext()
 
@@ -116,20 +126,52 @@ export default function ChatHistoryList({
   }
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-gray-200 bg-gray-50">
-      <div className="flex items-center justify-between h-14 px-4">
-        <h1 className="text-lg font-semibold text-gray-800">AI 教师助手</h1>
-        <button
-          type="button"
-          onClick={onCreate}
-          disabled={createDisabled}
-          className="flex items-center gap-1 rounded-md border border-blue-200 px-2 py-1 text-xs text-blue-600 transition-colors cursor-pointer hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <span className="text-sm leading-none">＋</span>
-          新建对话
-        </button>
-      </div>
-      <ul className="flex-1 overflow-y-auto pl-2 pb-4 scroll-area">{renderItems()}</ul>
-    </aside>
+    <>
+      {open && (
+        <div
+          className="fixed inset-0 z-30 bg-black/30 lg:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-gray-200 bg-gray-50 shadow-xl transition-transform duration-200 lg:static lg:translate-x-0 lg:shadow-none ${
+          open ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex items-center justify-between h-14 px-3">
+          <div className="flex items-center gap-2">
+            <img src="/favicon.svg" alt="AI 教师助手" className="h-8 w-8" />
+            <h1 className="text-sm font-semibold text-gray-800">AI 教师助手</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onCreate}
+              disabled={createDisabled}
+              className="hidden lg:flex items-center gap-1 rounded-md border border-blue-200 px-2 py-1 text-xs text-blue-600 transition-colors cursor-pointer hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span className="text-sm leading-none">＋</span>
+              新建对话
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="关闭历史对话"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition-colors cursor-pointer hover:bg-gray-200 lg:hidden"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <ul className="flex-1 overflow-y-auto pl-2 pb-4 scroll-area">{renderItems()}</ul>
+        <div className="lg:hidden flex items-center border-t border-gray-200 p-2">
+          <span className="text-sm text-gray-600 mx-auto">{username || '-'}</span>
+          <ChatLogout />
+        </div>
+      </aside>
+    </>
   )
 }

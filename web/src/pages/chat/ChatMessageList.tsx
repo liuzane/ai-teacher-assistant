@@ -37,9 +37,9 @@ export default function ChatMessageList({ loading, messages }: ChatMessageListPr
   }, [messages])
 
   return (
-    <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-6">
+    <div ref={listRef} className="flex-1 overflow-y-auto pl-4 pr-2 py-6">
       {loading ? (
-        <div className="flex justify-center items-center">
+        <div className="flex justify-center items-center h-full">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-slate-600" />
         </div>
       ) : (
@@ -54,11 +54,11 @@ export default function ChatMessageList({ loading, messages }: ChatMessageListPr
             return (
               <div key={message.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`${isUser ? 'max-w-[80%]' : 'w-full'} rounded-lg p-2 text-sm leading-6 break-words ${
+                  className={`${isUser ? 'max-w-[80%] p-2' : 'w-full'} rounded-lg text-sm leading-6 break-words ${
                     isUser
                       ? 'whitespace-pre-wrap bg-indigo-600 text-white'
                       : message.status === 'error'
-                        ? 'whitespace-pre-wrap bg-red-50 text-red-600'
+                        ? 'p-2 whitespace-pre-wrap bg-red-50 text-red-600'
                         : 'text-gray-800'
                   }`}
                 >

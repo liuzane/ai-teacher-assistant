@@ -58,7 +58,7 @@ export default function ChatSender({
   const canSend = !disabled && !!value.trim()
 
   return (
-    <div className="">
+    <div className="px-2">
       <form
         onSubmit={handleSubmit}
         className="mx-auto max-w-3xl rounded-2xl border border-gray-300 bg-white p-3 transition-colors focus-within:border-indigo-500"
@@ -90,7 +90,7 @@ export default function ChatSender({
           </button>
         </div>
       </form>
-      <p className="text-xs text-gray-500 text-center my-2">内容由 AI 生成，请仔细甄别</p>
+      <p className="text-xs text-gray-500 text-center my-1">内容由 AI 生成，请仔细甄别</p>
     </div>
   )
 }
