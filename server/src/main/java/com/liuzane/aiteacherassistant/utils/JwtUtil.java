@@ -22,19 +22,19 @@ public class JwtUtil {
   private Long refreshExpiration = 604800000L; // 604800000 (7天)
 
   // 生成 Access Token
-  public String generateAccessToken(String username) {
-    return generateToken(username, accessExpiration);
+  public String generateAccessToken(String userInfoStr) {
+    return generateToken(userInfoStr, accessExpiration);
   }
 
   // 生成 Refresh Token
-  public String generateRefreshToken(String username) {
-    return generateToken(username, refreshExpiration);
+  public String generateRefreshToken(String userInfoStr) {
+    return generateToken(userInfoStr, refreshExpiration);
   }
 
   // 通用生成方法
-  private String generateToken(String username, Long expiration) {
+  private String generateToken(String userInfoStr, Long expiration) {
     return Jwts.builder()
-        .setSubject(username)
+        .setSubject(userInfoStr)
         .setIssuedAt(new Date())
         .setExpiration(new Date(System.currentTimeMillis() + expiration))
         .signWith(getSigningKey(), SignatureAlgorithm.HS256)
@@ -47,8 +47,8 @@ public class JwtUtil {
     return Keys.hmacShaKeyFor(keyBytes);
   }
 
-  // 从 Token 中提取用户名
-  public String extractUsername(String token) {
+  // 从 Token 中提取用户信息
+  public String extractUserInfoStr(String token) {
     return extractAllClaims(token).getSubject();
   }
 

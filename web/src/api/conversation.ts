@@ -42,7 +42,6 @@ export interface ConversationMessageResponse {
 }
 
 export interface GetConversationsParams {
-  userId: string
   /** 分页游标：上一页最后一条会话 ID */
   lastId?: string
   limit?: number
@@ -52,7 +51,6 @@ export interface GetConversationsParams {
 
 export interface GetConversationMessagesParams {
   conversationId: string
-  userId?: string
   /** 分页游标：上一页第一条消息 ID */
   firstId?: string
   limit?: number
@@ -71,5 +69,22 @@ export function getConversationMessages(params: GetConversationMessagesParams) {
     url: '/dify/messages',
     method: 'GET',
     params,
+  })
+}
+
+/** 手动重命名会话 */
+export function renameConversation(conversationId: string, name: string) {
+  return request<Response<ConversationListItem>>({
+    url: `/dify/conversations/${encodeURIComponent(conversationId)}/name`,
+    method: 'POST',
+    data: { name, auto_generate: false },
+  })
+}
+
+/** 删除会话 */
+export function deleteConversation(conversationId: string) {
+  return request<Response<void>>({
+    url: `/dify/conversations/${encodeURIComponent(conversationId)}`,
+    method: 'DELETE',
   })
 }

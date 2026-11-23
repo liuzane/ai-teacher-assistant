@@ -47,8 +47,9 @@ public class AuthServiceServiceImpl implements AuthService {
     }
 
     // 3. 生成双 Token
-    final String accessToken = jwtUtil.generateAccessToken(user.getUsername());
-    final String refreshToken = jwtUtil.generateRefreshToken(user.getUsername());
+    String userInfoStr = user.getUsername() + ":" + user.getId();
+    final String accessToken = jwtUtil.generateAccessToken(userInfoStr);
+    final String refreshToken = jwtUtil.generateRefreshToken(userInfoStr);
 
     // 4. 返回给前端
     return Result.success(new LoginResponse(accessToken, refreshToken));
@@ -67,9 +68,9 @@ public class AuthServiceServiceImpl implements AuthService {
       return Result.fail(HttpStatus.UNAUTHORIZED.value(), "Invalid refresh token");
     }
 
-    // 2. 提取用户名，生成新的 Access Token
-    String username = jwtUtil.extractUsername(refreshToken);
-    final String newAccessToken = jwtUtil.generateAccessToken(username);
+    // 2. 提取用户信息，生成新的 Access Token
+    String userInfoStr = jwtUtil.extractUserInfoStr(refreshToken);
+    final String newAccessToken = jwtUtil.generateAccessToken(userInfoStr);
 
     // 3. 返回新的 Access Token（也可选择同时返回新的 Refresh Token）
     return Result.success(new RefreshResponse(newAccessToken));

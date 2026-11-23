@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { useNavigate, useParams } from 'react-router-dom'
 import { sendChatMessageStream, ChatStreamEventType } from '@/api/chat'
-import { getConversationMessages, getConversations } from '@/api/conversation'
+import {
+  deleteConversation,
+  getConversationMessages,
+  getConversations,
+  renameConversation,
+} from '@/api/conversation'
 import type { RootState } from '@/store'
 import ChatHeader from './ChatHeader'
 import ChatHistoryList from './ChatHistoryList'
@@ -68,18 +73,14 @@ export default function Chat() {
   /**
    * 拉取历史会话列表
    * 使用 requestId 丢弃过期响应，避免并发覆盖
-   * @param {string} [userId] 显式传入用户 ID，缺省时使用 Redux 中的 userInfo.id
-   * @returns {void} 无返回值；内部更新 conversationList / conversationLoading / conversationFailed
+   * @returns {Promise<ConversationListItem[]>} 本次请求得到的会话列表
    */
-  const loadConversationList = async (userId?: string): Promise<ConversationListItem[]> => {
-    const targetId = userId ?? userInfo.id
-    if (!targetId) return []
-
+  const loadConversationList = async (): Promise<ConversationListItem[]> => {
     const requestId = conversationListRequestIdRef.current + 1
     conversationListRequestIdRef.current = requestId
 
     try {
-      const { data, success } = await getConversations({ userId: targetId, limit: 50 })
+      const { data, success } = await getConversations({ limit: 50 })
       if (requestId !== conversationListRequestIdRef.current) return []
       setConversationLoading(false)
       const list = success ? data.data ?? [] : []
@@ -163,7 +164,6 @@ export default function Chat() {
     try {
       const { data, success } = await getConversationMessages({
         conversationId,
-        userId: userInfo.id,
         limit: 100,
       })
       if (requestId !== historyRequestIdRef.current) return
@@ -215,6 +215,16 @@ export default function Chat() {
   }
 
   /**
+   * 编辑已发送的用户消息：把内容回填到输入框，用户修改后可重新发送
+   * @param {string} content 被编辑消息的原始文本
+   * @returns {void} 无返回值；正在生成回复时忽略操作
+   */
+  const handleEditUserMessage = (content: string) => {
+    if (streaming) return
+    setInput(content)
+  }
+
+  /**
    * 新建对话：清空当前会话状态，首条消息发送时再由后端创建会话
    * @param 无
    * @returns {void} 无返回值；正在生成回复时忽略点击
@@ -230,6 +240,25 @@ export default function Chat() {
     setMessagesLoading(false)
     setSidebarOpen(false)
     navigate('/chat')
+  }
+
+  /** 重命名后同步列表与当前会话标题 */
+  const handleRenameConversation = async (item: ConversationListItem, name: string) => {
+    const { data } = await renameConversation(item.id, name)
+    const renamed = { ...item, ...data, name: data.name || name }
+    setConversationList((prev) => prev.map((conv) => (conv.id === item.id ? renamed : conv)))
+    if (conversationIdRef.current === item.id) {
+      setCurrentConversation(renamed)
+    }
+  }
+
+  /** 删除后移除列表项；删除当前会话时回到新对话页 */
+  const handleDeleteConversation = async (item: ConversationListItem) => {
+    await deleteConversation(item.id)
+    setConversationList((prev) => prev.filter((conv) => conv.id !== item.id))
+    if (conversationIdRef.current === item.id) {
+      handleCreateConversation()
+    }
   }
 
   /**
@@ -264,7 +293,7 @@ export default function Chat() {
     receivedTextRef.current = false
 
     abortRef.current = sendChatMessageStream(
-      { query, userId: userInfo.id, conversationId: conversationIdRef.current },
+      { query, conversationId: conversationIdRef.current },
       {
         onEvent: (event) => {
           switch (event.type) {
@@ -357,7 +386,7 @@ export default function Chat() {
 
   useEffect(() => {
     const init = async () => {
-      const list = await loadConversationList(userInfo.id)
+      const list = await loadConversationList()
       if (routeConversationId) {
         const target = list.find((item) => item.id === routeConversationId)
         if (target) {
@@ -396,6 +425,9 @@ export default function Chat() {
           failed={conversationFailed}
           activeId={activeHistoryId}
           onSelect={handleSelectHistory}
+          onRename={handleRenameConversation}
+          onDelete={handleDeleteConversation}
+          actionsDisabled={streaming || messagesLoading}
           onCreate={handleCreateConversation}
           createDisabled={streaming || messagesLoading || !userInfo.id}
           open={sidebarOpen}
@@ -412,7 +444,11 @@ export default function Chat() {
             createDisabled={streaming || messagesLoading || !userInfo.id}
           />
 
-          <ChatMessageList loading={messagesLoading} messages={messages} />
+          <ChatMessageList
+            loading={messagesLoading}
+            messages={messages}
+            onEditUserMessage={handleEditUserMessage}
+          />
 
           <ChatSender
             value={input}

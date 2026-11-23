@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 
 /** 批量导入 assets/svgs/ 下所有 SVG 原始文本 */
-const rawModules = import.meta.glob('@/assets/svgs/*.svg', {
+const rawModules = import.meta.glob('../../assets/svgs/*.svg', {
   query: '?raw',
   import: 'default',
   eager: true,

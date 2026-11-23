@@ -54,10 +54,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       return;
     }
 
-    String username = jwtUtil.extractUsername(accessToken);
-    if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+    String userInfoStr = jwtUtil.extractUserInfoStr(accessToken);
+    if (userInfoStr != null && SecurityContextHolder.getContext().getAuthentication() == null) {
       UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-        username,
+        userInfoStr,
         null,
         AuthorityUtils.NO_AUTHORITIES
       );

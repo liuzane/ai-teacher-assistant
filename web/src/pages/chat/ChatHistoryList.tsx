@@ -1,6 +1,9 @@
+import { useRef, useState, type FormEvent } from 'react'
 import type { ConversationListItem } from '@/api/conversation'
 import { useChatContext } from './chatContext'
 import ChatLogout from './ChatLogout'
+import MessageBox from '@/components/MessageBox'
+import Dropdown from '@/components/Dropdown'
 import Icon from '@/components/Icon'
 
 interface ChatHistoryListProps {
@@ -12,6 +15,12 @@ interface ChatHistoryListProps {
   failed?: boolean
   activeId: string | null
   onSelect: (item: ConversationListItem) => void
+  /** 重命名会话，失败时抛出错误 */
+  onRename: (item: ConversationListItem, name: string) => Promise<void>
+  /** 删除会话，失败时抛出错误 */
+  onDelete: (item: ConversationListItem) => Promise<void>
+  /** 生成或加载消息时禁用会话操作 */
+  actionsDisabled?: boolean
   /** 点击新建对话 */
   onCreate: () => void
   /** 生成中禁止新建，避免打断当前回复 */
@@ -60,7 +69,6 @@ function formatUpdatedAt(timestamp?: number) {
 /**
  * 历史对话列表侧边栏
  * @param {ChatHistoryListProps} props 组件属性
- * @param {string} [props.userId] 当前用户 ID，未就绪时不加载列表
  * @param {string | null} props.activeId 当前激活会话 ID，用于高亮
  * @param {(item: ConversationListItem) => void} props.onSelect 点击历史对话的回调
  * @param {number} [props.reloadToken] 变化时重新拉取列表（新建会话后由父组件递增）
@@ -74,6 +82,9 @@ export default function ChatHistoryList({
   failed = false,
   activeId,
   onSelect,
+  onRename,
+  onDelete,
+  actionsDisabled = false,
   onCreate,
   createDisabled = false,
   open = false,
@@ -81,6 +92,75 @@ export default function ChatHistoryList({
   username,
 }: ChatHistoryListProps) {
   const { setCurrentConversation } = useChatContext()
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [draftName, setDraftName] = useState('')
+  const [operatingId, setOperatingId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState('')
+  const cancelRenameRef = useRef(false)
+
+  /** 在列表项内进入重命名状态 */
+  const startRename = (item: ConversationListItem) => {
+    setEditingId(item.id)
+    setDraftName(item.name)
+    setActionError('')
+    cancelRenameRef.current = false
+  }
+
+  /** 执行重命名保存 */
+  const saveRename = async (item: ConversationListItem) => {
+    const name = draftName.trim()
+    if (!name) {
+      setActionError('会话名称不能为空')
+      return
+    }
+    if (name === item.name) {
+      setEditingId(null)
+      return
+    }
+
+    setOperatingId(item.id)
+    setActionError('')
+    try {
+      await onRename(item, name)
+      setEditingId(null)
+    } catch (error) {
+      setActionError(`重命名失败：${error instanceof Error ? error.message : '请稍后重试'}`)
+    } finally {
+      setOperatingId(null)
+    }
+  }
+
+  /** 提交新名称，Enter 保存，Escape 取消 */
+  const handleRename = async (event: FormEvent<HTMLFormElement>, item: ConversationListItem) => {
+    event.preventDefault()
+    await saveRename(item)
+  }
+
+  /** 确认后删除会话 */
+  const handleDelete = async (item: ConversationListItem) => {
+    const name = item.name || '未命名对话'
+    setActionError('')
+    try {
+      await MessageBox.confirm(`确定删除对话“${name}”吗？此操作不可恢复。`, '删除对话', {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        danger: true,
+      })
+    } catch {
+      return
+    }
+
+    setOperatingId(item.id)
+    try {
+      await onDelete(item)
+      if (editingId === item.id) setEditingId(null)
+    } catch (error) {
+      setActionError(`删除失败：${error instanceof Error ? error.message : '请稍后重试'}`)
+    } finally {
+      setOperatingId(null)
+    }
+  }
 
   /**
    * 渲染列表内容：按加载失败、加载中、空列表、正常列表四种状态分别输出
@@ -106,17 +186,72 @@ export default function ChatHistoryList({
             setCurrentConversation(item)
             onSelect(item)
           }}
-          className={`mb-1 w-full px-2 py-1 text-left transition-colors ${
+          className={`group relative mb-1 w-full rounded-md px-2 py-1 text-left transition-colors ${
             active ? 'bg-blue-50' : 'hover:bg-gray-50'
           }`}
         >
-          <div
-            className={`truncate text-sm ${
-              active ? 'font-medium text-blue-600' : 'text-gray-800'
-            }`}
-          >
-            {item.name || '未命名对话'}
-          </div>
+          {editingId === item.id ? (
+            <form
+              className="flex items-center gap-1 py-0.5"
+              onClick={(event) => event.stopPropagation()}
+              onSubmit={(event) => void handleRename(event, item)}
+            >
+              <input
+                autoFocus
+                aria-label="会话名称"
+                value={draftName}
+                maxLength={100}
+                disabled={operatingId === item.id}
+                onChange={(event) => setDraftName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    cancelRenameRef.current = true
+                    setEditingId(null)
+                  }
+                }}
+                onBlur={() => {
+                  if (cancelRenameRef.current) {
+                    cancelRenameRef.current = false
+                    return
+                  }
+                  void saveRename(item)
+                }}
+                className="min-w-0 flex-1 rounded-md border border-blue-300 bg-white px-2 py-1 text-sm text-gray-800 outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-50"
+              />
+            </form>
+          ) : (
+            <div className="flex items-center gap-1">
+              <div
+                className={`min-w-0 flex-1 truncate text-sm ${
+                  active ? 'font-medium text-blue-600' : 'text-gray-800'
+                }`}
+              >
+                {item.name || '未命名对话'}
+              </div>
+              <div onClick={(event) => event.stopPropagation()}>
+                <Dropdown
+                  trigger={<Icon type="more" size={18} />}
+                  triggerLabel={`管理对话 ${item.name || '未命名对话'}`}
+                  disabled={actionsDisabled || operatingId !== null}
+                  items={[
+                    {
+                      key: 'rename',
+                      label: '重命名',
+                      icon: <Icon type="edit" size={16} />,
+                      onSelect: () => startRename(item),
+                    },
+                    {
+                      key: 'delete',
+                      label: '删除',
+                      icon: <Icon type="delete" size={16} />,
+                      danger: true,
+                      onSelect: () => void handleDelete(item),
+                    },
+                  ]}
+                />
+              </div>
+            </div>
+          )}
           {item.introduction && (
             <div className="mt-1 truncate text-xs text-gray-400">{item.introduction}</div>
           )}
@@ -165,6 +300,11 @@ export default function ChatHistoryList({
             </button>
           </div>
         </div>
+        {actionError && (
+          <p role="alert" className="px-3 pb-2 text-xs text-red-500">
+            {actionError}
+          </p>
+        )}
         <ul className="flex-1 overflow-y-auto pl-2 pb-4 scroll-area">{renderItems()}</ul>
         <div className="lg:hidden flex items-center border-t border-gray-200 p-2">
           <span className="text-sm text-gray-600 mx-auto">{username || '-'}</span>

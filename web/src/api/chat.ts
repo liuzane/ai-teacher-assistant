@@ -3,7 +3,6 @@ import { getStorage } from '@/utils/local-storage'
 
 export interface ChatStreamParams {
   query: string
-  userId: string
   conversationId?: string
 }
 
@@ -105,7 +104,7 @@ export function sendChatMessageStream(
 ): () => void {
   const controller = new AbortController()
 
-  const search = new URLSearchParams({ query: params.query, userId: params.userId })
+  const search = new URLSearchParams({ query: params.query })
   if (params.conversationId) {
     search.set('conversationId', params.conversationId)
   }

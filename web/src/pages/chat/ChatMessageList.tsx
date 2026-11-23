@@ -2,13 +2,14 @@ import { useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
+import ChatMessageActions from './ChatMessageActions'
 
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
   status: 'streaming' | 'done' | 'error'
-  /** 生成阶段提示，如“正在检索知识库…”“正在生成回答…” */
+  /** 生成阶段提示，如"正在检索知识库…""正在生成回答…" */
   stage?: string
   /** 知识库检索结果（后端 KNOWLEDGE_RETRIEVAL_FINISHED 的 result） */
   sources?: string
@@ -17,15 +18,22 @@ export interface ChatMessage {
 interface ChatMessageListProps {
   loading: boolean
   messages: ChatMessage[]
+  /** 用户点击编辑按钮时，把该条消息内容回填到输入框 */
+  onEditUserMessage?: (content: string) => void
 }
 
 /**
  * 消息列表：按角色区分用户/助手气泡，助手消息支持 Markdown 与流式光标
  * @param {ChatMessageListProps} props 组件属性
  * @param {ChatMessage[]} props.messages 当前会话的消息列表
+ * @param {(content: string) => void} [props.onEditUserMessage] 用户消息编辑回调
  * @returns {JSX.Element} 消息区渲染结果
  */
-export default function ChatMessageList({ loading, messages }: ChatMessageListProps) {
+export default function ChatMessageList({
+  loading,
+  messages,
+  onEditUserMessage,
+}: ChatMessageListProps) {
   const listRef = useRef<HTMLDivElement | null>(null)
 
   // 内容变化时滚动到底部
@@ -51,48 +59,64 @@ export default function ChatMessageList({ loading, messages }: ChatMessageListPr
           )}
           {messages.map((message) => {
             const isUser = message.role === 'user'
+            const isStreaming = message.status === 'streaming'
             return (
-              <div key={message.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  className={`${isUser ? 'max-w-[80%] p-2' : 'w-full'} rounded-lg text-sm leading-6 break-words ${
-                    isUser
-                      ? 'whitespace-pre-wrap bg-indigo-600 text-white'
-                      : message.status === 'error'
-                        ? 'p-2 whitespace-pre-wrap bg-red-50 text-red-600'
-                        : 'text-gray-800'
-                  }`}
-                >
-                  {isUser || message.status === 'error' ? (
-                    message.content
-                  ) : (
-                    <>
-                      {message.status === 'streaming' &&
-                        !message.content &&
-                        message.stage && <span className="text-gray-400">{message.stage}</span>}
+              <div
+                key={message.id}
+                className={`group flex ${isUser ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`w-full flex flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}`}>
+                  <div
+                    className={`${isUser ? 'max-w-[80%] p-2' : 'w-full'} rounded-lg text-sm leading-6 break-words ${
+                      isUser
+                        ? 'whitespace-pre-wrap bg-indigo-600 text-white'
+                        : message.status === 'error'
+                          ? 'p-2 whitespace-pre-wrap bg-red-50 text-red-600'
+                          : 'text-gray-800'
+                    }`}
+                  >
+                    {isUser || message.status === 'error' ? (
+                      message.content
+                    ) : (
+                      <>
+                        {message.status === 'streaming' &&
+                          !message.content &&
+                          message.stage && <span className="text-gray-400">{message.stage}</span>}
 
-                      {message.content && (
-                        <div className="markdown-body">
-                          <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
-                            {message.content}
-                          </ReactMarkdown>
-                        </div>
-                      )}
+                        {message.content && (
+                          <div className="markdown-body">
+                            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                              {message.content}
+                            </ReactMarkdown>
+                          </div>
+                        )}
 
-                      {message.sources && (
-                        <details className="mt-2 border-t border-gray-200 pt-2">
-                          <summary className="cursor-pointer text-xs text-gray-500">
-                            知识库检索结果
-                          </summary>
-                          <pre className="mt-1 max-h-40 overflow-auto rounded bg-gray-50 p-2 text-xs whitespace-pre-wrap text-gray-500">
-                            {message.sources}
-                          </pre>
-                        </details>
-                      )}
+                        {message.sources && (
+                          <details className="mt-2 border-t border-gray-200 pt-2">
+                            <summary className="cursor-pointer text-xs text-gray-500">
+                              知识库检索结果
+                            </summary>
+                            <pre className="mt-1 max-h-40 overflow-auto rounded bg-gray-50 p-2 text-xs whitespace-pre-wrap text-gray-500">
+                              {message.sources}
+                            </pre>
+                          </details>
+                        )}
 
-                      {message.status === 'streaming' && message.content && (
-                        <span className="ml-0.5 inline-block animate-pulse text-indigo-500">▍</span>
-                      )}
-                    </>
+                        {message.status === 'streaming' && message.content && (
+                          <span className="ml-0.5 inline-block animate-pulse text-indigo-500">▍</span>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {/* 操作栏 */}
+                  {!isStreaming && message.content && (
+                    <ChatMessageActions
+                      isUser={isUser}
+                      content={message.content}
+                      streaming={isStreaming}
+                      onEdit={isUser ? onEditUserMessage : undefined}
+                    />
                   )}
                 </div>
               </div>

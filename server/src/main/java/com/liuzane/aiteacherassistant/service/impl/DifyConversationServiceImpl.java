@@ -4,8 +4,11 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import com.liuzane.aiteacherassistant.model.dto.request.ConversationRenameRequest;
 import com.liuzane.aiteacherassistant.model.dto.response.ConversationMessageResponse;
 import com.liuzane.aiteacherassistant.model.dto.response.ConversationListItem;
 import com.liuzane.aiteacherassistant.model.dto.response.ConversationListResponse;
@@ -14,6 +17,7 @@ import com.liuzane.aiteacherassistant.service.DifyConversationService;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -202,13 +206,7 @@ public class DifyConversationServiceImpl implements DifyConversationService {
     JsonNode dataNode = root.path("data");
     if (dataNode.isArray()) {
       for (JsonNode node : dataNode) {
-        ConversationListItem item = new ConversationListItem();
-        item.setId(node.path("id").asText());
-        item.setName(node.path("name").asText());
-        item.setStatus(node.path("status").asText());
-        item.setCreatedAt(node.path("created_at").asLong());
-        item.setUpdatedAt(node.path("updated_at").asLong());
-        items.add(item);
+        items.add(parseConversationItem(node));
       }
     }
 
@@ -217,5 +215,92 @@ public class DifyConversationServiceImpl implements DifyConversationService {
     response.setHasMore(root.path("has_more").asBoolean());
     response.setLimit(root.path("limit").asInt());
     return response;
+  }
+
+  /**
+   * 解析 Dify 返回的单个会话对象（列表项、重命名返回体通用）
+   *
+   * @param node 会话 JSON 节点
+   * @return 会话对象
+   */
+  private ConversationListItem parseConversationItem(JsonNode node) {
+    ConversationListItem item = new ConversationListItem();
+    item.setId(node.path("id").asText());
+    item.setName(node.path("name").asText());
+    item.setStatus(node.path("status").asText());
+    item.setIntroduction(nullableText(node, "introduction"));
+    item.setCreatedAt(node.path("created_at").asLong());
+    item.setUpdatedAt(node.path("updated_at").asLong());
+    JsonNode inputsNode = node.path("inputs");
+    if (inputsNode.isObject() && !inputsNode.isEmpty()) {
+      try {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> inputs = objectMapper.treeToValue(inputsNode, Map.class);
+        item.setInputs(inputs);
+      } catch (Exception e) {
+        log.warn("解析 Dify inputs 字段失败，跳过：{}", e.getMessage());
+      }
+    }
+    return item;
+  }
+
+  @Override
+  public Mono<ConversationListItem> renameConversation(String conversationId, ConversationRenameRequest request) {
+    return webClient.post()
+        .uri(URI.create(difyApiUrl + "/conversations/" + encode(conversationId) + "/name"))
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+        .contentType(MediaType.APPLICATION_JSON)
+        .accept(MediaType.APPLICATION_JSON)
+        .bodyValue(toRenamingRequestBody(request))
+        .exchangeToMono(response -> handleResponse(response, body -> parseConversationItem(objectMapper.readTree(body)),
+            "重命名 Dify 会话"));
+  }
+
+  @Override
+  public Mono<Void> deleteConversation(String conversationId, String userId) {
+    Map<String, String> body = new HashMap<>();
+    if (userId != null && !userId.isBlank()) {
+      body.put("user", userId);
+    }
+    return webClient.method(HttpMethod.DELETE)
+        .uri(URI.create(difyApiUrl + "/conversations/" + encode(conversationId)))
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+        .contentType(MediaType.APPLICATION_JSON)
+        .accept(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .exchangeToMono(response -> {
+          HttpStatusCode status = response.statusCode();
+          return response.bodyToMono(String.class)
+              .flatMap(respBody -> {
+                if (!status.is2xxSuccessful()) {
+                  String snippet = respBody.length() > 200 ? respBody.substring(0, 200) + "..." : respBody;
+                  String msg = String.format("删除 Dify 会话失败: HTTP %d, 响应片段=%s", status.value(), snippet);
+                  log.error(msg);
+                  return Mono.error(new RuntimeException(msg));
+                }
+                return Mono.empty();
+              });
+        });
+  }
+
+  /**
+   * 将重命名 DTO 转换为 Dify 要求的 JSON Map。
+   * Dify 字段：{@code name}、{@code auto_generate}、{@code user}。
+   *
+   * @param request 重命名 DTO
+   * @return JSON 可序列化的 Map
+   */
+  private Map<String, Object> toRenamingRequestBody(ConversationRenameRequest request) {
+    Map<String, Object> body = new HashMap<>();
+    if (request.getName() != null) {
+      body.put("name", request.getName());
+    }
+    if (request.getAutoGenerate() != null) {
+      body.put("auto_generate", request.getAutoGenerate());
+    }
+    if (request.getUser() != null) {
+      body.put("user", request.getUser());
+    }
+    return body;
   }
 }
