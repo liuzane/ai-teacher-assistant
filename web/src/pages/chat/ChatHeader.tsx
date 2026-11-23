@@ -1,3 +1,4 @@
+import Icon from '@/components/Icon'
 import ChatLogout from './ChatLogout'
 
 interface ChatHeaderProps {
@@ -37,17 +38,7 @@ export default function ChatHeader({
           title="历史对话"
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-gray-600 transition-colors cursor-pointer hover:bg-gray-200 lg:hidden"
         >
-          <svg
-            viewBox="0 0 24 24"
-            width="20"
-            height="20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
-            <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
-          </svg>
+          <Icon type="menu" size={20} />
         </button>
         <span className="truncate text-sm font-semibold text-gray-800">{conversationName}</span>
       </div>

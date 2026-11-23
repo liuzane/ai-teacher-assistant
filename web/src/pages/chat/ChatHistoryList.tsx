@@ -1,6 +1,7 @@
 import type { ConversationListItem } from '@/api/conversation'
 import { useChatContext } from './chatContext'
 import ChatLogout from './ChatLogout'
+import Icon from '@/components/Icon'
 
 interface ChatHistoryListProps {
   /** 会话列表数据 */
@@ -160,9 +161,7 @@ export default function ChatHistoryList({
               aria-label="关闭历史对话"
               className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition-colors cursor-pointer hover:bg-gray-200 lg:hidden"
             >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-              </svg>
+              <Icon type="close" size={16} />
             </button>
           </div>
         </div>

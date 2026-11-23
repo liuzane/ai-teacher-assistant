@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { clearUser } from '@/store/splices/userSlice'
 import { clearStorage } from '@/utils/local-storage'
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/consts/request'
+import Icon from '@/components/Icon'
 
 /**
  * 退出登录组件：展示退出按钮，提供二次确认弹窗。
@@ -51,16 +52,7 @@ export default function ChatLogout() {
         title="退出登录"
         className="flex w-8 h-8 items-center justify-center rounded-md transition-colors cursor-pointer hover:bg-gray-300"
       >
-        <svg
-          viewBox="0 0 1024 1024"
-          width="20"
-          height="20"
-          fill="currentColor"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-hidden="true"
-        >
-          <path d="M512 64C264.8 64 64 264.8 64 512s200.8 448 448 448 448-200.8 448-448S759.2 64 512 64z m-32 128h64v384h-64V192z m32 640c-176.8 0-320-143.2-320-320 0-131.2 79.2-244 192-293.6v72C307.2 334.4 256 417.6 256 512c0 140.8 115.2 256 256 256s256-115.2 256-256c0-94.4-51.2-177.6-128-221.6v-72c112.8 49.6 192 162.4 192 293.6 0 176.8-143.2 320-320 320z" />
-        </svg>
+        <Icon type="logout" size={20} />
       </button>
 
       {confirmOpen && (

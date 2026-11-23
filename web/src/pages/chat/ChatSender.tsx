@@ -1,4 +1,5 @@
 import type { FormEvent, KeyboardEvent } from 'react'
+import Icon from '@/components/Icon'
 
 interface ChatSenderProps {
   value: string
@@ -78,15 +79,7 @@ export default function ChatSender({
             aria-label="发送"
             className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-indigo-300"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M12 19V5M5 12l7-7 7 7"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <Icon type="send" size={16} />
           </button>
         </div>
       </form>
