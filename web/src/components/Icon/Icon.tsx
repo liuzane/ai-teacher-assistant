@@ -47,7 +47,6 @@ export default function Icon({ type, size = 16, color, className }: IconProps) {
   if (!finalSvgContent) return null
 
   const style: React.CSSProperties = {
-    display: 'inline-flex',
     width: sizeValue,
     height: sizeValue,
     color,
@@ -55,7 +54,7 @@ export default function Icon({ type, size = 16, color, className }: IconProps) {
 
   return (
     <span
-      className={className}
+      className={`inline-flex${className ? ` ${className}` : ''}`}
       style={style}
       aria-hidden="true"
       dangerouslySetInnerHTML={{ __html: finalSvgContent }}

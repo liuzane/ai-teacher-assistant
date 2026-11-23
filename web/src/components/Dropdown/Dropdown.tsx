@@ -6,6 +6,7 @@ export interface DropdownItem {
   icon?: ReactNode
   danger?: boolean
   onSelect: () => void
+  onClick?: (event: React.MouseEvent) => void
 }
 
 interface DropdownProps {
@@ -15,10 +16,11 @@ interface DropdownProps {
   triggerLabel: string
   items: DropdownItem[]
   disabled?: boolean
+  onClick?: (event: React.MouseEvent) => void
 }
 
 /** 轻量操作菜单，支持点击外部关闭和 Escape 关闭。 */
-export default function Dropdown({ trigger, triggerLabel, items, disabled = false }: DropdownProps) {
+export default function Dropdown({ trigger, triggerLabel, items, disabled = false, onClick }: DropdownProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const menuId = useId()
@@ -46,19 +48,30 @@ export default function Dropdown({ trigger, triggerLabel, items, disabled = fals
   }, [open])
 
   return (
-    <div ref={rootRef} className="relative shrink-0">
-      <button
-        type="button"
+    <div ref={rootRef} className="relative shrink-0" onClick={onClick}>
+      <span
+        role="button"
+        tabIndex={disabled ? -1 : 0}
         aria-label={triggerLabel}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        disabled={disabled}
-        onClick={() => setOpen((value) => !value)}
-        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+        aria-disabled={disabled || undefined}
+        onClick={() => {
+          if (disabled) return
+          setOpen((value) => !value)
+        }}
+        onKeyDown={(event) => {
+          if (disabled) return
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            setOpen((value) => !value)
+          }
+        }}
+        className="inline-block"
       >
         {trigger}
-      </button>
+      </span>
 
       {open && !disabled && (
         <div

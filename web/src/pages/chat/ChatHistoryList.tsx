@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { Fragment, useMemo, useRef, useState, type FormEvent } from 'react'
 import type { ConversationListItem } from '@/api/conversation'
 import { useChatContext } from './chatContext'
 import ChatLogout from './ChatLogout'
@@ -41,9 +41,21 @@ interface ChatHistoryListProps {
 const pad = (value: number) => String(value).padStart(2, '0')
 
 /**
- * 把秒级时间戳格式化为列表展示用的相对时间
+ * 取秒级时间戳对应的本地日期键（YYYY-MM-DD），用于按日期分组与排序
  * @param {number} [timestamp] 秒级时间戳，缺省或非法时返回空字符串
- * @returns {string} 今天/昨天显示时分，同年显示月日，跨年显示完整日期
+ * @returns {string} 可按字符串排序的日期键
+ */
+function getDateKey(timestamp?: number) {
+  if (!timestamp) return ''
+  const date = new Date(timestamp * 1000)
+  if (Number.isNaN(date.getTime())) return ''
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+/**
+ * 把秒级时间戳格式化为分组标签：今天/昨天/X月X日/XXXX年X月X日
+ * @param {number} [timestamp] 秒级时间戳，缺省或非法时返回空字符串
+ * @returns {string} 当日显示“今天”，前一日显示“昨天”，同年显示“X月X日”，跨年显示“XXXX年X月X日”
  */
 function formatUpdatedAt(timestamp?: number) {
   if (!timestamp) return ''
@@ -54,16 +66,13 @@ function formatUpdatedAt(timestamp?: number) {
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000)
 
-  if (date >= startOfToday) {
-    return `今天 ${pad(date.getHours())}:${pad(date.getMinutes())}`
-  }
-  if (date >= startOfYesterday) {
-    return `昨天 ${pad(date.getHours())}:${pad(date.getMinutes())}`
-  }
+  console.log(date.getTime(), startOfToday.getTime(), startOfYesterday.getTime()) 
+  if (date >= startOfToday) return '今天'
+  if (date >= startOfYesterday) return '昨天'
   if (date.getFullYear() === now.getFullYear()) {
-    return `${date.getMonth() + 1} 月 ${date.getDate()} 日`
+    return `${date.getMonth() + 1}月${date.getDate()}日`
   }
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
 }
 
 /**
@@ -97,6 +106,30 @@ export default function ChatHistoryList({
   const [operatingId, setOperatingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState('')
   const cancelRenameRef = useRef(false)
+
+  /**
+   * 按日期分组并排序：分组按日期倒序（今天 → 昨天 → 更早），组内按更新时间倒序
+   * 即使上游列表未排序，这里也能保证展示顺序稳定
+   */
+  const groups = useMemo(() => {
+    const map = new Map<string, { label: string; items: ConversationListItem[] }>()
+    for (const item of items) {
+      const key = getDateKey(item.updatedAt)
+      const group = map.get(key)
+      if (group) {
+        group.items.push(item)
+      } else {
+        map.set(key, { label: formatUpdatedAt(item.updatedAt), items: [item] })
+      }
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => (a < b ? 1 : a > b ? -1 : 0))
+      .map(([key, group]) => ({
+        key,
+        label: group.label,
+        items: [...group.items].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)),
+      }))
+  }, [items])
 
   /** 在列表项内进入重命名状态 */
   const startRename = (item: ConversationListItem) => {
@@ -177,17 +210,22 @@ export default function ChatHistoryList({
     if (items.length === 0) {
       return <p className="px-3 py-2 text-xs text-gray-400">暂无历史对话</p>
     }
-    return items.map((item) => {
-      const active = item.id === activeId
-      return (
+    return groups.map((group) => (
+      <Fragment key={group.key}>
+        <li className="mt-4 first:mt-0 px-2 py-1 text-xs font-medium text-gray-500">
+          {group.label}
+        </li>
+        {group.items.map((item) => {
+          const active = item.id === activeId
+          return (
         <li
           key={item.id}
           onClick={() => {
             setCurrentConversation(item)
             onSelect(item)
           }}
-          className={`group relative mb-1 w-full rounded-md px-2 py-1 text-left transition-colors ${
-            active ? 'bg-blue-50' : 'hover:bg-gray-50'
+          className={`group relative mb-1 w-full rounded-md px-2 py-1 text-left cursor-pointer transition-colors ${
+            active ? 'bg-blue-50' : 'hover:bg-blue-50'
           }`}
         >
           {editingId === item.id ? (
@@ -228,37 +266,41 @@ export default function ChatHistoryList({
               >
                 {item.name || '未命名对话'}
               </div>
-              <div onClick={(event) => event.stopPropagation()}>
-                <Dropdown
-                  trigger={<Icon type="more" size={18} />}
-                  triggerLabel={`管理对话 ${item.name || '未命名对话'}`}
-                  disabled={actionsDisabled || operatingId !== null}
-                  items={[
-                    {
-                      key: 'rename',
-                      label: '重命名',
-                      icon: <Icon type="edit" size={16} />,
-                      onSelect: () => startRename(item),
-                    },
-                    {
-                      key: 'delete',
-                      label: '删除',
-                      icon: <Icon type="delete" size={16} />,
-                      danger: true,
-                      onSelect: () => void handleDelete(item),
-                    },
-                  ]}
-                />
-              </div>
+              <Dropdown
+                trigger={
+                  <span className="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 cursor-pointer transition-colors hover:bg-gray-200 hover:text-gray-600">
+                    <Icon type="more" size={18} />
+                  </span>
+                }
+                triggerLabel={`管理对话 ${item.name || '未命名对话'}`}
+                disabled={actionsDisabled || operatingId !== null}
+                items={[
+                  {
+                    key: 'rename',
+                    label: '重命名',
+                    icon: <Icon type="edit" size={16} />,
+                    onSelect: () => startRename(item),
+                  },
+                  {
+                    key: 'delete',
+                    label: '删除',
+                    icon: <Icon type="delete" size={16} />,
+                    danger: true,
+                    onSelect: () => void handleDelete(item),
+                  },
+                ]}
+                onClick={(event) => event.stopPropagation()}
+              />
             </div>
           )}
           {item.introduction && (
             <div className="mt-1 truncate text-xs text-gray-400">{item.introduction}</div>
           )}
-          <div className="mt-1 text-xs text-gray-300">{formatUpdatedAt(item.updatedAt)}</div>
         </li>
       )
-    })
+        })}
+      </Fragment>
+    ))
   }
 
   return (
