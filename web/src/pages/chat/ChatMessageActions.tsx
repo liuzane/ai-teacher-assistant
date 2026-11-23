@@ -53,10 +53,10 @@ export default function ChatMessageActions({
         type="button"
         onClick={handleCopy}
         className="flex items-center gap-1 rounded-md p-1 text-xs cursor-pointer hover:bg-gray-100 hover:text-gray-600 transition-colors"
-        aria-label="复制"
+        aria-label={copied ? '已复制' : '复制'}
         title={copied ? '已复制' : '复制'}
       >
-        <Icon type="copy" size={14} />
+        <Icon type={copied ? 'check' : 'copy'} size={14} />
       </button>
 
       {isUser && (
