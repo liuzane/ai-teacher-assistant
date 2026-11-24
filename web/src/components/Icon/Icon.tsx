@@ -49,7 +49,7 @@ export default function Icon({ type, size = 16, color, className }: IconProps) {
   const style: React.CSSProperties = {
     width: sizeValue,
     height: sizeValue,
-    color,
+    fill: color || 'currentColor',
   }
 
   return (

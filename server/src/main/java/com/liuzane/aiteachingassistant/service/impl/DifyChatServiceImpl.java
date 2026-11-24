@@ -1,10 +1,16 @@
 package com.liuzane.aiteachingassistant.service.impl;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
+import com.liuzane.aiteachingassistant.model.dto.response.WorkflowRunDetailResponse;
 import com.liuzane.aiteachingassistant.service.DifyChatService;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +25,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.util.retry.Retry;
 import tools.jackson.databind.JsonNode;
@@ -77,6 +84,58 @@ public class DifyChatServiceImpl implements DifyChatService {
         .flatMap(this::translateDifyEvent)
         .doOnError(e -> log.error("调用 Dify 流式接口失败: {}", e.getMessage()))
         .transform(this::withHeartbeat);
+  }
+
+  @Override
+  public Mono<WorkflowRunDetailResponse> getWorkflowRunDetail(String conversationId) {
+    Map<String, String> info = getWorkflowRunInfo(conversationId);
+    String workflowRunId = info.get("workflowRunId");
+    if (workflowRunId == null || workflowRunId.isBlank()) {
+      return Mono.error(new RuntimeException("未找到工作流运行记录，请稍后重试或发起新对话"));
+    }
+
+    return webClient.get()
+        .uri(URI.create(difyApiUrl + "/workflows/run/" + encode(workflowRunId)))
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+        .accept(MediaType.APPLICATION_JSON)
+        .exchangeToMono(response -> handleResponse(response, body -> {
+          JsonNode root = objectMapper.readTree(body);
+          WorkflowRunDetailResponse resp = new WorkflowRunDetailResponse();
+          resp.setId(root.path("id").asText());
+          resp.setWorkflowId(root.path("workflow_id").asText());
+          resp.setStatus(root.path("status").asText());
+          resp.setInputs(nullableText(root, "inputs"));
+          resp.setOutputs(root.path("outputs"));
+          resp.setError(nullableText(root, "error"));
+          JsonNode elapsed = root.path("elapsed_time");
+          resp.setElapsedTime(elapsed.isNull() || elapsed.isMissingNode() ? null : elapsed.asDouble());
+          resp.setTotalSteps(root.path("total_steps").asInt());
+          resp.setTotalTokens(root.path("total_tokens").asInt());
+          resp.setCreatedAt(root.path("created_at").asLong());
+          JsonNode finished = root.path("finished_at");
+          resp.setFinishedAt(finished.isNull() || finished.isMissingNode() ? null : finished.asLong());
+          return resp;
+        }, "获取工作流执行情况"));
+  }
+
+  @Override
+  public Mono<String> stopChatMessage(String conversationId, String userId) {
+    Map<String, String> info = getWorkflowRunInfo(conversationId);
+    String taskId = info.get("taskId");
+    if (taskId == null || taskId.isBlank()) {
+      return Mono.error(new RuntimeException("未找到消息生成任务，无法停止"));
+    }
+
+    Map<String, Object> body = new HashMap<>();
+    body.put("user", userId);
+    return webClient.post()
+        .uri(URI.create(difyApiUrl + "/chat-messages/" + encode(taskId) + "/stop"))
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+        .contentType(MediaType.APPLICATION_JSON)
+        .accept(MediaType.APPLICATION_JSON)
+        .bodyValue(body)
+        .exchangeToMono(response -> handleResponse(response,
+            respBody -> objectMapper.readTree(respBody).path("result").asText(), "停止对话消息生成"));
   }
 
   /**
@@ -253,6 +312,72 @@ public class DifyChatServiceImpl implements DifyChatService {
       // 缓存失败不影响对话主流程
       log.warn("写入 workflow_run_info 到 Redis 失败, conversationId={}: {}", conversationId, e.getMessage());
     }
+  }
+
+  /**
+   * 从 Redis 读取本次会话的工作流运行信息，Key 为 dify:workflow:{conversationId}，
+   * Field 为 workflowRunId、taskId。读取失败时返回空 Map，不影响主流程。
+   *
+   * @param conversationId 会话 ID
+   * @return 包含 workflowRunId / taskId 的 Map，无记录时为空 Map
+   */
+  private Map<String, String> getWorkflowRunInfo(String conversationId) {
+    if (conversationId == null || conversationId.isBlank()) {
+      return Collections.emptyMap();
+    }
+    try {
+      String key = WORKFLOW_RUN_ID_KEY_PREFIX + conversationId;
+      Map<String, String> entries = redisTemplate.<String, String>opsForHash().entries(key);
+      return entries == null ? Collections.emptyMap() : entries;
+    } catch (Exception e) {
+      log.warn("读取 workflow_run_info 失败, conversationId={}: {}", conversationId, e.getMessage());
+      return Collections.emptyMap();
+    }
+  }
+
+  /**
+   * 读取可空字符串字段，字段缺失或为 null 时返回 null
+   */
+  private String nullableText(JsonNode node, String field) {
+    JsonNode value = node.path(field);
+    return value.isMissingNode() || value.isNull() ? null : value.asText();
+  }
+
+  /**
+   * 对字符串进行 URL 编码，确保在 Dify API 路径中安全使用
+   */
+  private String encode(String value) {
+    return URLEncoder.encode(value, StandardCharsets.UTF_8);
+  }
+
+  /**
+   * 统一处理 WebClient 响应：非 2xx 抛出带响应片段的异常；2xx 时调用解析函数。
+   *
+   * @param response  WebClient 响应
+   * @param parser    JSON 解析函数
+   * @param operation 操作描述（用于日志）
+   * @return 解析结果
+   */
+  private <T> Mono<T> handleResponse(ClientResponse response, Function<String, T> parser, String operation) {
+    HttpStatusCode status = response.statusCode();
+    return response.bodyToMono(String.class)
+        .flatMap(body -> {
+          if (!status.is2xxSuccessful()) {
+            String snippet = body.length() > 200 ? body.substring(0, 200) + "..." : body;
+            String msg = String.format("%s 失败: HTTP %d, 响应片段=%s", operation, status.value(), snippet);
+            log.error(msg);
+            return Mono.error(new RuntimeException(msg));
+          }
+          try {
+            return Mono.just(parser.apply(body));
+          } catch (Exception e) {
+            String snippet = body.length() > 200 ? body.substring(0, 200) + "..." : body;
+            String msg = String.format("%s 响应解析失败: %s, HTTP %d, 响应片段=%s", operation, e.getMessage(),
+                status.value(), snippet);
+            log.error(msg, e);
+            return Mono.error(new RuntimeException(msg, e));
+          }
+        });
   }
 
   /**

@@ -21,11 +21,17 @@ import lombok.RequiredArgsConstructor;
 public class AuthController {
   private final AuthService authService;
 
+  /**
+   * 用户登录
+   */
   @PostMapping("/login")
   public Result<LoginResponse> login(@RequestBody LoginRequest request) {
     return authService.login(request);
   }
 
+  /**
+   * 刷新访问令牌
+   */
   @PostMapping("/refresh")
   public Result<RefreshResponse> refresh(@RequestBody RefreshRequest request) {
     return authService.refresh(request);

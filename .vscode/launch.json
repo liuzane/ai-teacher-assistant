@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Spring Boot-aiteachingassistantApplication<aiteachingassistant>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.liuzane.aiteachingassistant.aiteachingassistantApplication",
+      "projectName": "aiteachingassistant",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot-AiTeachingAssistantApplication<aiteachingassistant>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.liuzane.aiteachingassistant.AiTeachingAssistantApplication",
+      "projectName": "aiteachingassistant",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}

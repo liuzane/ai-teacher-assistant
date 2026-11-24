@@ -18,6 +18,9 @@ public class UserController {
 
   private final UserService service;
 
+  /**
+   * 获取当前登录用户信息
+   */
   @GetMapping("/info")
   public Result<UserInfoVO> getUserInfo(@AuthenticationPrincipal String userInfoStr) {
     return service.getUserInfo(extractUsername(userInfoStr));

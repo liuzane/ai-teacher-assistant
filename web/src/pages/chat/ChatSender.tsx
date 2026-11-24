@@ -77,9 +77,9 @@ export default function ChatSender({
             type="submit"
             disabled={!canSend}
             aria-label="发送"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-indigo-300"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white cursor-pointer transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-indigo-300"
           >
-            <Icon type="send" size={16} />
+            <Icon type="send" size={16} color="white" />
           </button>
         </div>
       </form>
