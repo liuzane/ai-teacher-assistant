@@ -209,21 +209,57 @@ export default function Chat() {
 
       const history = data.data ?? []
       const latestMessage = history.at(-1)
-      const isLatestRunning = workflowRunResponse?.data.status === 'running'
+      /** 最新一次工作流的运行状态（仅对最后一条消息有效，历史消息沿用 item 自身状态） */
+      const latestWorkflowStatus = workflowRunResponse?.data.status
+      const latestWorkflowError = workflowRunResponse?.data.error ?? undefined
+      const isLatestRunning = latestWorkflowStatus === 'running'
       const loaded: ChatMessage[] = []
       for (const item of history) {
-        const isRunning = isLatestRunning && item.id === latestMessage?.id
+        const isLatest = item.id === latestMessage?.id
         loaded.push({
           id: `${item.id}-user`,
           role: 'user',
           content: item.query,
           status: 'done',
         })
+
+        // 优先展示已有回答；无回答时按工作流运行状态兜底
+        let assistantContent: string
+        let assistantStatus: ChatMessage['status'] =
+          item.status === 'error' ? 'error' : 'done'
+        if (item.answer) {
+          assistantContent = item.answer
+        } else if (isLatest && latestWorkflowStatus) {
+          switch (latestWorkflowStatus) {
+            case 'running':
+              // 仍在生成，留空由流式输出 / 轮询刷新填充
+              assistantContent = ''
+              break
+            case 'stopped':
+              assistantContent = '已停止生成'
+              break
+            case 'failed':
+              // 优先取工作流错误，其次取消息记录错误，最后兜底无回复
+              assistantContent = latestWorkflowError || item.error || '（无回复）'
+              assistantStatus = 'error'
+              break
+            case 'partial-succeeded':
+            case 'paused':
+              assistantContent = '（无回复）'
+              break
+            default:
+              assistantContent = item.error || '（无回复）'
+              break
+          }
+        } else {
+          assistantContent = item.error || '（无回复）'
+        }
+
         loaded.push({
           id: `${item.id}-assistant`,
           role: 'assistant',
-          content: item.answer || item.error || (isRunning ? '' : '（无回复）'),
-          status: item.status === 'error' ? 'error' : 'done',
+          content: assistantContent,
+          status: assistantStatus,
         })
       }
       setMessages(loaded)
