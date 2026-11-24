@@ -19,11 +19,11 @@ interface ChatHistoryListProps {
   onRename: (item: ConversationListItem, name: string) => Promise<void>
   /** 删除会话，失败时抛出错误 */
   onDelete: (item: ConversationListItem) => Promise<void>
-  /** 生成或加载消息时禁用会话操作 */
+  /** 加载消息时禁用会话操作 */
   actionsDisabled?: boolean
   /** 点击新建对话 */
   onCreate: () => void
-  /** 生成中禁止新建，避免打断当前回复 */
+  /** 加载消息或用户信息未就绪时禁止新建 */
   createDisabled?: boolean
   /** 小屏（<1024px）抽屉是否展开 */
   open?: boolean
@@ -82,7 +82,7 @@ function formatUpdatedAt(timestamp?: number) {
  * @param {(item: ConversationListItem) => void} props.onSelect 点击历史对话的回调
  * @param {number} [props.reloadToken] 变化时重新拉取列表（新建会话后由父组件递增）
  * @param {() => void} props.onCreate 点击新建对话的回调
- * @param {boolean} [props.createDisabled] 生成中禁止新建，避免打断当前回复
+ * @param {boolean} [props.createDisabled] 加载消息或用户信息未就绪时禁止新建
  * @returns {JSX.Element} 侧边栏渲染结果
  */
 export default function ChatHistoryList({

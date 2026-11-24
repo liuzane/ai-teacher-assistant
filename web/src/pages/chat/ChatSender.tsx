@@ -5,23 +5,31 @@ interface ChatSenderProps {
   value: string
   onChange: (value: string) => void
   onSubmit: () => void
-  /** 生成中或用户信息未就绪时禁用发送 */
+  /** 正在生成回复：发送按钮切换为停止按钮 */
+  streaming?: boolean
+  /** 点击停止生成 */
+  onStop?: () => void
+  /** 用户信息未就绪等情况下禁用发送 */
   disabled?: boolean
 }
 
 /**
- * 聊天输入区：文本框 + 发送按钮，支持 Enter 发送、Shift+Enter 换行
+ * 聊天输入区：文本框 + 发送/停止按钮，支持 Enter 发送、Shift+Enter 换行
  * @param {ChatSenderProps} props 组件属性
  * @param {string} props.value 输入框内容
  * @param {(value: string) => void} props.onChange 输入内容变化回调
  * @param {() => void} props.onSubmit 发送回调
- * @param {boolean} [props.disabled] 生成中或用户信息未就绪时禁用发送
+ * @param {boolean} [props.streaming] 正在生成回复时按钮显示为停止并触发 onStop
+ * @param {() => void} [props.onStop] 停止生成回调
+ * @param {boolean} [props.disabled] 用户信息未就绪等情况下禁用发送
  * @returns {JSX.Element} 输入区渲染结果
  */
 export default function ChatSender({
   value,
   onChange,
   onSubmit,
+  streaming = false,
+  onStop,
   disabled = false,
 }: ChatSenderProps) {
   /**
@@ -73,14 +81,26 @@ export default function ChatSender({
           className="max-h-40 w-full resize-none border-none bg-transparent px-2 py-1 text-sm leading-relaxed outline-none"
         />
         <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={!canSend}
-            aria-label="发送"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white cursor-pointer transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-indigo-300"
-          >
-            <Icon type="send" size={16} color="white" />
-          </button>
+          {streaming ? (
+            <button
+              type="button"
+              onClick={onStop}
+              aria-label="停止生成"
+              title="停止生成"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white cursor-pointer transition-colors hover:bg-indigo-500"
+            >
+              <Icon type="pause" size={16} color="white" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!canSend}
+              aria-label="发送"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white cursor-pointer transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-indigo-300"
+            >
+              <Icon type="send" size={16} color="white" />
+            </button>
+          )}
         </div>
       </form>
       <p className="text-xs text-gray-500 text-center my-1">内容由 AI 生成，请仔细甄别</p>

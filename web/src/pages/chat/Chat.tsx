@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { useNavigate, useParams } from 'react-router-dom'
-import { sendChatMessageStream, ChatStreamEventType } from '@/api/chat'
+import {
+  getWorkflowRunDetail,
+  sendChatMessageStream,
+  stopChatMessage,
+  ChatStreamEventType,
+} from '@/api/chat'
 import {
   deleteConversation,
   getConversationMessages,
@@ -149,6 +154,35 @@ export default function Chat() {
   }
 
   /**
+   * 本地中断当前流并复位生成状态：仅断开 SSE 与打字机，不调用后端停止接口。
+   * 用于切换/离开会话等“只是不再展示”的场景。
+   * @param 无
+   * @returns {void} 无返回值
+   */
+  const abortLocalStream = () => {
+    abortRef.current?.()
+    patchAssistant((m) => ({ ...m, status: 'done', stage: undefined }))
+    stopStream()
+  }
+
+  /**
+   * 主动停止当前回复生成：先在本地中断，再调用后端停止接口终止 Dify 任务。
+   * 用于用户点击停止按钮、或生成中重新发送等需要真正终止生成的场景。
+   * @param 无
+   * @returns {void} 无返回值
+   */
+  const handleStop = () => {
+    const conversationId = conversationIdRef.current
+    // 先中断本地 SSE 与打字机，避免远端停止前继续写入
+    abortLocalStream()
+    if (conversationId) {
+      void stopChatMessage(conversationId).catch(() => {
+        // 停止接口失败时前端已复位，忽略即可
+      })
+    }
+  }
+
+  /**
    * 加载指定会话的问答记录，并切换为当前会话
    * @param {string} conversationId 会话 ID
    * @returns {Promise<void>} 请求结束后解析；失败时把错误信息渲染为一条助手消息
@@ -162,15 +196,23 @@ export default function Chat() {
     setMessagesLoading(true)
 
     try {
-      const { data, success } = await getConversationMessages({
-        conversationId,
-        limit: 100,
-      })
+      const [{ data, success }, workflowRunResponse] = await Promise.all([
+        getConversationMessages({
+          conversationId,
+          limit: 100,
+        }),
+        // 状态记录可能已过期，不影响历史消息展示
+        getWorkflowRunDetail(conversationId).catch(() => null),
+      ])
       if (requestId !== historyRequestIdRef.current) return
       if (!success) throw new Error('接口返回失败')
 
+      const history = data.data ?? []
+      const latestMessage = history.at(-1)
+      const isLatestRunning = workflowRunResponse?.data.status === 'running'
       const loaded: ChatMessage[] = []
-      for (const item of (data.data ?? [])) {
+      for (const item of history) {
+        const isRunning = isLatestRunning && item.id === latestMessage?.id
         loaded.push({
           id: `${item.id}-user`,
           role: 'user',
@@ -180,11 +222,36 @@ export default function Chat() {
         loaded.push({
           id: `${item.id}-assistant`,
           role: 'assistant',
-          content: item.answer || item.error || '（无回复）',
+          content: item.answer || item.error || (isRunning ? '' : '（无回复）'),
           status: item.status === 'error' ? 'error' : 'done',
         })
       }
       setMessages(loaded)
+
+      if (isLatestRunning && latestMessage) {
+        assistantIdRef.current = `${latestMessage.id}-assistant`
+        patchAssistant((message) => ({
+          ...message,
+          status: 'streaming',
+          stage: '内容生成中',
+        }))
+
+        const pollWorkflowRun = async (): Promise<void> => {
+          if (requestId !== historyRequestIdRef.current) return
+          try {
+            const { data: workflowRun } = await getWorkflowRunDetail(conversationId)
+            if (requestId !== historyRequestIdRef.current) return
+            if (workflowRun.status === 'running') {
+              window.setTimeout(() => void pollWorkflowRun(), 3000)
+              return
+            }
+            await loadMessages(conversationId)
+          } catch {
+            // 状态查询失败时停止轮询，保留当前消息
+          }
+        }
+        window.setTimeout(() => void pollWorkflowRun(), 3000)
+      }
     } catch (error) {
       if (requestId !== historyRequestIdRef.current) return
       setMessages([
@@ -206,10 +273,10 @@ export default function Chat() {
    * 点击历史对话：切换路由，由路由参数驱动 activeHistoryId 更新，
    * 进而触发 ChatHistoryList 匹配后写入 context
    * @param {ConversationListItem} item 被点击的历史会话
-   * @returns {void} 无返回值；正在生成回复时忽略点击
+   * @returns {void} 无返回值；生成中切换仅在本地断开当前流，不调用后端停止接口
    */
   const handleSelectHistory = (item: ConversationListItem) => {
-    if (streaming) return
+    if (streaming) abortLocalStream()
     setSidebarOpen(false)
     navigate(`/chat/${item.id}`)
   }
@@ -217,20 +284,19 @@ export default function Chat() {
   /**
    * 编辑已发送的用户消息：把内容回填到输入框，用户修改后可重新发送
    * @param {string} content 被编辑消息的原始文本
-   * @returns {void} 无返回值；正在生成回复时忽略操作
+   * @returns {void} 无返回值
    */
   const handleEditUserMessage = (content: string) => {
-    if (streaming) return
     setInput(content)
   }
 
   /**
    * 新建对话：清空当前会话状态，首条消息发送时再由后端创建会话
    * @param 无
-   * @returns {void} 无返回值；正在生成回复时忽略点击
+   * @returns {void} 无返回值；正在生成回复时先停止再新建
    */
   const handleCreateConversation = () => {
-    if (streaming) return
+    if (streaming) handleStop()
     // 丢弃可能仍在返回的历史消息响应
     historyRequestIdRef.current += 1
     conversationIdRef.current = undefined
@@ -265,11 +331,14 @@ export default function Chat() {
    * 发送当前输入并启动流式回复
    * 先追加用户消息与占位的助手消息，再发起 SSE 请求，由打字机循环逐字渲染回复。
    * @param 无（读取组件内的 input 状态作为提问内容）
-   * @returns {void} 无返回值；输入为空、正在生成或用户信息未就绪时直接返回
+   * @returns {void} 无返回值；输入为空或用户信息未就绪时直接返回；生成中发送会先停止上一条回复
    */
   const handleSend = () => {
     const query = input.trim()
-    if (!query || streaming || !userInfo.id) return
+    if (!query || !userInfo.id) return
+
+    // 生成中继续发送：先停止上一条回复，再开始新一轮
+    if (streaming) handleStop()
 
     const userMessage: ChatMessage = {
       id: nextId(),
@@ -427,9 +496,9 @@ export default function Chat() {
           onSelect={handleSelectHistory}
           onRename={handleRenameConversation}
           onDelete={handleDeleteConversation}
-          actionsDisabled={streaming || messagesLoading}
+          actionsDisabled={messagesLoading}
           onCreate={handleCreateConversation}
-          createDisabled={streaming || messagesLoading || !userInfo.id}
+          createDisabled={messagesLoading || !userInfo.id}
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           username={userInfo?.username}
@@ -441,7 +510,7 @@ export default function Chat() {
             conversationName={currentConversation?.name}
             onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
             onCreate={handleCreateConversation}
-            createDisabled={streaming || messagesLoading || !userInfo.id}
+            createDisabled={messagesLoading || !userInfo.id}
           />
 
           <ChatMessageList
@@ -454,7 +523,9 @@ export default function Chat() {
             value={input}
             onChange={setInput}
             onSubmit={handleSend}
-            disabled={streaming || messagesLoading || !userInfo.id}
+            streaming={streaming}
+            onStop={handleStop}
+            disabled={messagesLoading || !userInfo.id}
           />
         </div>
       </div>

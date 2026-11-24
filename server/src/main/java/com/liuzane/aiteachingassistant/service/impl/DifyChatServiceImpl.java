@@ -101,16 +101,10 @@ public class DifyChatServiceImpl implements DifyChatService {
         .exchangeToMono(response -> handleResponse(response, body -> {
           JsonNode root = objectMapper.readTree(body);
           WorkflowRunDetailResponse resp = new WorkflowRunDetailResponse();
-          resp.setId(root.path("id").asText());
-          resp.setWorkflowId(root.path("workflow_id").asText());
           resp.setStatus(root.path("status").asText());
-          resp.setInputs(nullableText(root, "inputs"));
-          resp.setOutputs(root.path("outputs"));
           resp.setError(nullableText(root, "error"));
           JsonNode elapsed = root.path("elapsed_time");
           resp.setElapsedTime(elapsed.isNull() || elapsed.isMissingNode() ? null : elapsed.asDouble());
-          resp.setTotalSteps(root.path("total_steps").asInt());
-          resp.setTotalTokens(root.path("total_tokens").asInt());
           resp.setCreatedAt(root.path("created_at").asLong());
           JsonNode finished = root.path("finished_at");
           resp.setFinishedAt(finished.isNull() || finished.isMissingNode() ? null : finished.asLong());

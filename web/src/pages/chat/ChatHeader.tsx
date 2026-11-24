@@ -10,7 +10,7 @@ interface ChatHeaderProps {
   onToggleSidebar?: () => void
   /** 点击新建对话 */
   onCreate?: () => void
-  /** 生成中禁止新建，避免打断当前回复 */
+  /** 加载消息或用户信息未就绪时禁止新建 */
   createDisabled?: boolean
 }
 

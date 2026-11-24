@@ -185,31 +185,19 @@ export function sendChatMessageStream(
 
 /**
  * 工作流执行情况（对应后端 GET /dify/chat-messages/status，转发 Dify GET /workflows/run/{workflow_run_id}）。
- * 字段与 Dify WorkflowRunDetailResponse 对齐。
+ * 后端仅返回前端需要的字段。
  */
 export interface WorkflowRunDetail {
-  /** 工作流运行 ID */
-  id: string
-  /** 工作流 ID */
-  workflowId: string
   /**
    * 执行状态：
    * running 执行中 / succeeded 成功 / failed 失败 /
    * stopped 手动停止 / partial-succeeded 部分成功 / paused 等待人工介入
    */
   status: string
-  /** 工作流输入变量，原始 JSON 字符串，可能为 null */
-  inputs: string | null
-  /** 工作流输出数据，尚无输出时为空对象 */
-  outputs: Record<string, unknown> | null
   /** 失败时的错误消息，可能为 null */
   error: string | null
   /** 总耗时（秒），不含暂停时间，可能为 null */
   elapsedTime: number | null
-  /** 已执行的工作流总步数 */
-  totalSteps: number
-  /** 消耗的总令牌数 */
-  totalTokens: number
   /** 创建时间（秒级 Unix 时间戳） */
   createdAt: number
   /** 结束时间（秒级 Unix 时间戳），可能为 null */
