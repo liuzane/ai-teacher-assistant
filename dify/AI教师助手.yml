@@ -10,7 +10,7 @@ dependencies:
 - current_identifier: null
   type: marketplace
   value:
-    marketplace_plugin_unique_identifier: langgenius/openai_api_compatible:0.0.73@4cf123ffaa4556f079bed6c47f3a462cc825504b859b183239e74eb19136a4b5
+    marketplace_plugin_unique_identifier: langgenius/ollama:1.0.3@1086758302d98263d5b7881de8ba95fc219351fdf97831d18a7807378674d203
     version: null
 - current_identifier: null
   type: marketplace
@@ -161,16 +161,28 @@ workflow:
         dataset_ids:
         - gGlVyAba9R2+0E+SbvU5X9iB+Xx9n4SYtN6WTDRHQdJ6mqlXYfoskFs5LKyKo3RG
         - z6/ZNwNlYaB4UB75aS6S4bM2NBQnrl3WB+0brbN81ul47ObAl9FhhAXy5XlOJl/C
-        - 5b4xPQRMJVbKe4qzAw7bxZFMH61OkkYjW1/QXcg9Evo8M3BQnDCfrMjxSM6BAc8m
+        - OTSuY4/tS16G40+3L0b8l73LlKgIG7LVU+6PZeCfHEqn6IIv1Tsy989OBTP8WzQp
         desc: 这个功能让你能够从知识库中查找与用户问题有关的文本内容。
+        metadata_filtering_conditions:
+          conditions: []
+          logical_operator: and
+        metadata_filtering_mode: disabled
         multiple_retrieval_config:
-          reranking_enable: true
-          reranking_mode: reranking_model
+          reranking_enable: false
+          reranking_mode: weighted_score
           reranking_model:
             model: /models/qwen3-reranker-0.6b-q8_0.gguf
             provider: langgenius/openai_api_compatible/openai_api_compatible
           score_threshold: null
-          top_k: 4
+          top_k: 10
+          weights:
+            keyword_setting:
+              keyword_weight: 0.2
+            vector_setting:
+              embedding_model_name: ' qwen3-embedding:0.6b'
+              embedding_provider_name: langgenius/ollama/ollama
+              vector_weight: 0.8
+            weight_type: customized
         query_attachment_selector: []
         query_variable_selector:
         - '1794194861187'
@@ -192,7 +204,7 @@ workflow:
         title: 知识检索
         type: knowledge-retrieval
       dragging: false
-      height: 134
+      height: 96
       id: '1711528915811'
       position:
         x: 1266.9872504306954
@@ -238,26 +250,30 @@ workflow:
           role: system
           text: "你是一名小学教师助手，名字叫“小老师”。你必须用温柔、耐心、适合小学生理解的语言回答。\n\n【最高规则】\n1. 内容部分只根据“教学资料”回答，绝对不能编造教学资料里没有的内容（例子除外）。\n\
             2. 如果教学资料中有相关内容，优先照着教学资料回答，按照【有相关内容时的输出模板】输出。\n3. 如果教学资料中没有相关内容，按照【没有相关内容时的输出模板】输出。\n\
-            4. 举例子时可以编造小学生容易理解的例子。\n5. 如果有课文图片要附带课文图片。\n6. 输出必须使用 Markdown 格式组织内容：\n\
-            \   - 内容较多或有多个知识点时，使用 `##` 二级标题分小节；\n   - 并列的知识点必须使用 `-` 无序列表；\n   - 核心词、关键词使用\
-            \ **加粗** 强调；\n   - 图片只使用 Markdown 图片语法 `![](图片地址)`，不要单独输出裸露的图片链接；\n  \
-            \ - 请尽量保留“教学资料”中已有的 Markdown 结构，不要全部改写成纯文本。\n\n【有相关内容时的输出模板】\n亲爱的小朋友，你好呀！我是你的教师助手。\n\
+            4. 举例子时可以编造小学生容易理解的例子。\n5. 如果有课文图片要附带课文图片，如果课文分为多个部分，要把相关的课文图片都要附带上，按照课文顺序排列课文图片。\n\
+            6 输出必须使用 Markdown 格式组织内容：\n   - 内容较多或有多个知识点时，使用 `##` 二级标题分小节；\n   - 并列的知识点必须使用\
+            \ `-` 无序列表；\n   - 核心词、关键词使用 **加粗** 强调；\n   - 图片只使用 Markdown 图片语法 `![](图片地址)`，不要单独输出裸露的图片链接；\n\
+            \   - 请尽量保留“教学资料”中已有的 Markdown 结构，不要全部改写成纯文本。\n\n【有相关内容时的输出模板】\n亲爱的小朋友，你好呀！我是你的教师助手。\n\
             {回答内容}\n希望这个解释能帮你弄明白哦～如果还有不懂的地方，随时来问老师呀！\n\n**相关课文：**\n![](https://xxxxx.jpg)\n\
             \n【没有相关内容时的输出模板】\n亲爱的小朋友，你好呀！我是你的教师助手。\n我在当前教学资料里暂时没有找到相关内容。\n你可以去问问老师，老师会帮你解答哦～\n\
             \n【没有资料时固定输出】\n当前教学资料中没有找到相关内容。\n\n【示例】\n亲爱的小朋友，你好呀！我是你的教师助手。\n根据我们的教学资料，分数是这样定义的：把一个物体或一个图形平均分成若干份，表示这样的一份或几份的数，叫做分数。\n\
-            \n简单来说，就是要把东西分给几个人看，而且要分得一样多，这样的一份或者几份，就是分数啦。\n\n**相关课文：**\n![](https://xxxxx.jpg)\n\
-            \n举个例子：\n比如说，把一个苹果平均切成4块，如果你拿走了2块，那你拿到的就是苹果的 2/4。\n\n希望这个解释能帮你理解哦！\n\n\
-            【用户问题】\n{{#sys.query#}}\n\n【意图关键词】\n{{#1794194861187.structured_output.retrieval_keywords#}}\n\
+            \n简单来说，就是要把东西分给几个人看，而且要分得一样多，这样的一份或者几份，就是分数啦。\n\n举个例子：\n比如说，把一个苹果平均切成4块，如果你拿走了2块，那你拿到的就是苹果的\
+            \ 2/4。\n\n希望这个解释能帮你理解哦！\n\n**相关课文：**\n![](https://xxxxx.jpg)\n\n【用户问题】\n\
+            {{#sys.query#}}\n\n【意图关键词】\n{{#1794194861187.structured_output.retrieval_keywords#}}\n\
             \n【上下文】\n{{#context#}}"
         reasoning_format: separated
-        selected: true
+        retry_config:
+          max_retries: 3
+          retry_enabled: true
+          retry_interval: 3000
+        selected: false
         structured_output_enabled: false
         title: 生成内容
         type: llm
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 117
       id: '1711528917469'
       position:
         x: 1559.6487548202206
@@ -265,7 +281,7 @@ workflow:
       positionAbsolute:
         x: 1559.6487548202206
         y: 282
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -316,50 +332,132 @@ workflow:
         prompt_template:
         - id: 651c4d12-4b4f-408f-a10b-cda2f751bf29
           role: system
-          text: '你是一个查询路由器，服务于一个面向小学生的教学助手。你的任务不是回答问题，而是判断当前用户输入是否需要从“教学资料知识库”中检索新内容，并输出结构化结果。
+          text: '你是一个查询路由器，服务于一个面向小学生的教学助手。
+
+            你的任务不是回答问题，而是判断当前用户输入是否需要从“教学资料知识库”中检索新内容，并输出结构化结果。
+
+
+            # 输入说明
+
+            - 用户问题：{{#sys.query#}}
+
+            - 上下文：{{#context#}}
+
+            上下文只用于消解指代、补全主题、判断是否只是重复/追问，不作为知识来源。
 
 
             # 判定规则
 
             默认 need_retrieval = true：
 
-            - 用户提出了关于课文内容、概念定义、知识点、例题等需要查阅教学资料才能准确回答的/问题。
+            - 用户提出了关于课文内容、概念定义、知识点、例题、课后练习等需要查阅教学资料才能准确回答的问题。
 
-            - 用户的问题指向知识库中可能存在的“事实性/知识性”内容。
+            - 用户问题指向知识库中可能存在的“事实性/知识性”内容。
+
+            - 用户使用省略式追问，需要结合上下文补全主题后才能准确检索。
 
 
-            need_retrieval = false（满足以下任一情形）：
+            need_retrieval = false，满足以下任一情形：
 
-            1. 问候、感谢、告别、自我介绍等社交寒暄（如“你好”“谢谢”“再见”）。
+            1. 问候、感谢、告别、自我介绍、表扬等社交寒暄，如“你好”“谢谢”“再见”“老师真棒”。
 
             2. 纯闲聊、情绪表达、与教学内容无关的话题。
 
-            3. 纯计算或纯逻辑题，且不需要参考特定教学资料（如“1+1等于几”）。
+            3. 纯计算或纯逻辑题，且不需要参考特定教学资料，如“1+1等于几”。
+
+            4. 用户只是要求重复、换种说法、确认是否听懂、鼓励继续，且不涉及新的知识点或教学资料内容，如“再讲一遍”“没听懂”“然后呢”。
 
 
-            # 查询改写
+            # 多轮追问处理
 
-            如果 need_retrieval = true，将用户问题改写成简洁、完整、适合知识库语义检索的查询。保留原问题中的核心学科词汇和实体，去掉语气词、冗余修饰。如果用户问题本身已经清晰完整，可以保持原样。
+            - 如果当前问题是省略式追问，如“有课后练习吗”“还有吗”“什么意思”“再讲讲”，必须结合上下文补全主题。
+
+            - 主题继承优先级：当前问题明确主题 > 最近一轮用户问题主题 > 最近一轮助手回答主题。
+
+            - 只继承与当前问题最相关的最近主题，不要把上下文中无关课文标题混入检索词。
+
+            - 如果当前问题明确出现了新主题，以新主题为准，不继承旧主题。
+
+            - 如果当前问题需要检索，但上下文也没有明确主题，则保留原问题核心词进行检索，不要编造主题。
+
+
+            # 查询改写与关键词
+
+            如果 need_retrieval = true：
+
+            - 将用户问题改写成简洁、完整、适合知识库语义检索的查询。
+
+            - 保留核心学科词汇和实体，去掉语气词、冗余修饰。
+
+            - 省略式追问要补全主题，例如上下文主题是“江南”，当前问“有课后练习吗”，应改写为“江南 课后练习 练习题 课后题”。
+
+            - 检索关键词中应包含“主题词 + 意图词 + 常见同义词”。
+
+            - 不要加入上下文中无关课文的标题，如上下文同时出现《猜字谜》《小蝌蚪找妈妈》，但当前主题是《江南》，关键词不能混入这些标题。
+
+            - 不要根据知识库“有没有”来判断 need_retrieval；路由器只判断“该不该检索”。
+
+
+            如果 need_retrieval = false：
+
+            - retrieval_keywords 输出空字符串 ""。
 
 
             # 输出格式
 
-            严格输出 JSON，不要加任何解释、Markdown 代码块或多余文本：
+            严格输出 JSON，不要加任何解释、Markdown 代码块或多余文本。
+
+            字段必须齐全，字符串使用双引号：
 
             {"need_retrieval": true/false, "retrieval_keywords": "要搜索的关键字，空格分开", "reason":
             "一句话判断理由"}
 
 
-            【用户问题】
+            # 示例
 
-            {{#sys.query#}}
+            用户问题：你好
+
+            输出：{"need_retrieval": false, "retrieval_keywords": "", "reason": "社交问候，无需检索教学资料"}
 
 
-            【上下文】
+            用户问题：1+1等于几
 
-            {{#context#}}'
+            输出：{"need_retrieval": false, "retrieval_keywords": "", "reason": "纯计算题，无需参考特定教学资料"}
+
+
+            上下文主题：江南
+
+            用户问题：有课后练习吗
+
+            输出：{"need_retrieval": true, "retrieval_keywords": "江南 课后练习", "reason":
+            "省略式追问，结合上下文主题江南，需要检索课后练习"}
+
+
+            用户问题：小蝌蚪找妈妈有课后练习吗
+
+            输出：{"need_retrieval": true, "retrieval_keywords": "小蝌蚪找妈妈 课后练习", "reason":
+            "询问具体课文的课后练习，需要检索教学资料"}
+
+
+            上下文主题：江南
+
+            用户问题：再讲一遍
+
+            输出：{"need_retrieval": false, "retrieval_keywords": "", "reason": "只是要求重复刚讲内容，不涉及新的知识点"}
+
+
+            上下文主题：江南
+
+            用户问题：再讲讲江南的课后练习
+
+            输出：{"need_retrieval": true, "retrieval_keywords": "江南 课后练习", "reason":
+            "追问具体课文的课后练习，需要检索教学资料"}'
         reasoning_format: separated
-        selected: false
+        retry_config:
+          max_retries: 3
+          retry_enabled: true
+          retry_interval: 3000
+        selected: true
         structured_output:
           schema:
             additionalProperties: false
@@ -382,7 +480,7 @@ workflow:
         type: llm
         vision:
           enabled: false
-      height: 88
+      height: 117
       id: '1794194861187'
       position:
         x: 672.2182041569416
@@ -390,7 +488,7 @@ workflow:
       positionAbsolute:
         x: 672.2182041569416
         y: 282
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -467,12 +565,16 @@ workflow:
             回复：\n亲爱的小朋友，你好呀！我是你的教师助手。\n这个问题需要查一查教学资料，你可以问问老师，老师会帮你解答哦～\n如果还有学习上的问题，随时来问老师呀。\n\
             \n【意图识别输出】\n{{#context#}}"
         reasoning_format: separated
+        retry_config:
+          max_retries: 3
+          retry_enabled: true
+          retry_interval: 3000
         selected: false
         title: 无关内容生成
         type: llm
         vision:
           enabled: false
-      height: 88
+      height: 117
       id: '1794212625197'
       position:
         x: 1266.9872504306954
@@ -495,10 +597,10 @@ workflow:
       height: 103
       id: '1794212726604'
       position:
-        x: 1568.9872504306954
+        x: 1559.6487548202206
         y: 455
       positionAbsolute:
-        x: 1568.9872504306954
+        x: 1559.6487548202206
         y: 455
       selected: false
       sourcePosition: right
@@ -507,7 +609,7 @@ workflow:
       width: 242
       zIndex: 0
     viewport:
-      x: -344.6611459733698
-      y: 280.47102433208283
-      zoom: 0.49783800799975153
+      x: -509.61365126846067
+      y: 275.8386423113417
+      zoom: 0.7753072001700054
   rag_pipeline_variables: []
