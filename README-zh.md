@@ -79,8 +79,8 @@ ai-teaching-assistant/
 ### 1. 初始化数据库
 
 ```bash
-mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS ai_teacher_assistant DEFAULT CHARSET utf8mb4;"
-mysql -u root -p ai_teacher_assistant < server/sql/user.sql
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS ai_teaching_assistant DEFAULT CHARSET utf8mb4;"
+mysql -u root -p ai_teaching_assistant < server/sql/user.sql
 ```
 
 脚本会创建 `user` 表，并写入 `admin / admin` 测试账号。

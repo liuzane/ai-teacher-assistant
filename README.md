@@ -79,8 +79,8 @@ ai-teaching-assistant/
 ### 1. Prepare the database
 
 ```bash
-mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS ai_teacher_assistant DEFAULT CHARSET utf8mb4;"
-mysql -u root -p ai_teacher_assistant < server/sql/user.sql
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS ai_teaching_assistant DEFAULT CHARSET utf8mb4;"
+mysql -u root -p ai_teaching_assistant < server/sql/user.sql
 ```
 
 The seed script creates the `user` table and an `admin / 123456` account.
