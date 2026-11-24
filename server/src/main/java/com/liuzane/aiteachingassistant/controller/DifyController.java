@@ -3,7 +3,6 @@ package com.liuzane.aiteachingassistant.controller;
 import com.liuzane.aiteachingassistant.common.Result;
 import com.liuzane.aiteachingassistant.model.dto.request.ConversationRenameRequest;
 import com.liuzane.aiteachingassistant.model.dto.response.ConversationMessageResponse;
-import com.liuzane.aiteachingassistant.model.dto.response.ConversationListItem;
 import com.liuzane.aiteachingassistant.model.dto.response.ConversationListResponse;
 import com.liuzane.aiteachingassistant.service.DifyChatService;
 import com.liuzane.aiteachingassistant.service.DifyConversationService;
@@ -66,13 +65,12 @@ public class DifyController {
    * 重命名会话（对应 Dify POST /conversations/{conversation_id}/name）
    */
   @PostMapping("/conversations/{conversationId}/name")
-  public Mono<Result<ConversationListItem>> renameConversation(
+  public Mono<Result<String>> renameConversation(
     @AuthenticationPrincipal String userInfoStr,
     @PathVariable String conversationId,
     @RequestBody ConversationRenameRequest request) {
-    request.setUser(ToolsUtil.extractUserId(userInfoStr));
-    return difyConversationService.renameConversation(conversationId, request)
-        .map(data -> Result.<ConversationListItem>success(data));
+    return difyConversationService.renameConversation(conversationId, ToolsUtil.extractUserId(userInfoStr), request)
+        .map(data -> Result.<String>success(data));
   }
 
   /**

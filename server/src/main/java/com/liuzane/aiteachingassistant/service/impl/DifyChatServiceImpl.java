@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.liuzane.aiteachingassistant.service.DifyChatService;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
@@ -25,6 +27,7 @@ import tools.jackson.databind.node.ObjectNode;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class DifyChatServiceImpl implements DifyChatService {
 
   @Value("${dify.api.url}")
@@ -33,9 +36,14 @@ public class DifyChatServiceImpl implements DifyChatService {
   @Value("${dify.api.key}")
   private String apiKey;
 
+  private final RedisTemplate<String, String> redisTemplate;
+
   private final WebClient webClient = WebClient.create();
   private final ObjectMapper objectMapper = new ObjectMapper();
   private Boolean thinking = false;
+
+  /** 工作流运行信息在 Redis 中的 Key 前缀，完整 Key 为 dify:workflow:{conversationId}，存储 Hash 结构 */
+  private static final String WORKFLOW_RUN_ID_KEY_PREFIX = "dify:workflow:";
 
   /** 心跳间隔：超过该时长没有数据推送时发一次心跳，避免前端/网关长时间无数据而断流 */
   private static final Duration HEARTBEAT_INTERVAL = Duration.ofMinutes(1);
@@ -135,10 +143,12 @@ public class DifyChatServiceImpl implements DifyChatService {
       switch (event) {
         // 工作流开始事件
         case "workflow_started": {
+          String conversationId = node.path("conversation_id").asText();
           ObjectNode obj = objectMapper.createObjectNode();
-          obj.put("conversationId", node.path("conversation_id").asText());
+          obj.put("conversationId", conversationId);
           obj.put("messageId", node.path("message_id").asText());
           obj.put("createdAt", node.path("created_at").asText());
+          saveWorkflowRunInfo(conversationId, node.path("workflow_run_id").asText(), node.path("task_id").asText());
           return Flux.just(toJson("WORKFLOW_STARTED", obj));
         }
 
@@ -216,6 +226,32 @@ public class DifyChatServiceImpl implements DifyChatService {
     } catch (Exception e) {
       log.warn("解析 Dify SSE 事件失败: {}", dataStr, e);
       return Flux.empty();
+    }
+  }
+
+  /**
+   * 记录本次工作流的运行信息，使用 Redis Hash 存储，Key 为 dify:workflow:{conversationId}，
+   * Field 为 workflowRunId、taskId，便于后续按会话反查 Dify 工作流执行记录。
+   *
+   * @param conversationId 会话 ID
+   * @param workflowRunId  工作流运行 ID
+   * @param taskId         任务 ID
+   */
+  private void saveWorkflowRunInfo(String conversationId, String workflowRunId, String taskId) {
+    if (conversationId == null || conversationId.isBlank()
+        || workflowRunId == null || workflowRunId.isBlank()) {
+      return;
+    }
+    try {
+      String key = WORKFLOW_RUN_ID_KEY_PREFIX + conversationId;
+      Map<String, String> hashMap = new HashMap<>();
+      hashMap.put("workflowRunId", workflowRunId);
+      hashMap.put("taskId", taskId);
+      redisTemplate.<String, String>opsForHash().putAll(key, hashMap);
+      redisTemplate.expire(key, Duration.ofHours(3));
+    } catch (Exception e) {
+      // 缓存失败不影响对话主流程
+      log.warn("写入 workflow_run_info 到 Redis 失败, conversationId={}: {}", conversationId, e.getMessage());
     }
   }
 

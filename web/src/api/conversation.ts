@@ -72,12 +72,12 @@ export function getConversationMessages(params: GetConversationMessagesParams) {
   })
 }
 
-/** 手动重命名会话 */
+/** 手动重命名会话，返回重命名后的会话名称 */
 export function renameConversation(conversationId: string, name: string) {
-  return request<Response<ConversationListItem>>({
+  return request<Response<string>>({
     url: `/dify/conversations/${encodeURIComponent(conversationId)}/name`,
     method: 'POST',
-    data: { name, auto_generate: false },
+    data: { name },
   })
 }
 

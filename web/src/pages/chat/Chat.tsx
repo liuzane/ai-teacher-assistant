@@ -244,8 +244,8 @@ export default function Chat() {
 
   /** 重命名后同步列表与当前会话标题 */
   const handleRenameConversation = async (item: ConversationListItem, name: string) => {
-    const { data } = await renameConversation(item.id, name)
-    const renamed = { ...item, ...data, name: data.name || name }
+    const { data: newName } = await renameConversation(item.id, name)
+    const renamed = { ...item, name: newName || name }
     setConversationList((prev) => prev.map((conv) => (conv.id === item.id ? renamed : conv)))
     if (conversationIdRef.current === item.id) {
       setCurrentConversation(renamed)

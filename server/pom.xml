@@ -61,6 +61,12 @@
       <artifactId>spring-boot-starter-webflux</artifactId>
     </dependency>
 
+    <!-- Spring Data Redis（默认 Lettuce 客户端） -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-redis</artifactId>
+    </dependency>
+
     <!-- Lombok -->
     <dependency>
       <groupId>org.projectlombok</groupId>

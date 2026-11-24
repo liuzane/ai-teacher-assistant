@@ -1,7 +1,6 @@
 package com.liuzane.aiteachingassistant.service;
 
 import com.liuzane.aiteachingassistant.model.dto.request.ConversationRenameRequest;
-import com.liuzane.aiteachingassistant.model.dto.response.ConversationListItem;
 import com.liuzane.aiteachingassistant.model.dto.response.ConversationMessageResponse;
 import com.liuzane.aiteachingassistant.model.dto.response.ConversationListResponse;
 
@@ -32,13 +31,14 @@ public interface DifyConversationService {
   Mono<ConversationMessageResponse> getMessages(String conversationId, String userId, String firstId, Integer limit);
 
   /**
-   * 重命名会话。当请求中 {@code autoGenerate=true} 时，Dify 会根据消息自动生成名称。
+   * 重命名会话。
    *
    * @param conversationId 会话 ID
-   * @param request        重命名请求体（name / auto_generate / user）
-   * @return 重命名后的会话信息
+   * @param userId         终端用户标识，作为 Dify 请求体的 {@code user} 字段传入
+   * @param request        重命名请求体（仅含 name）
+   * @return 重命名后的会话名称
    */
-  Mono<ConversationListItem> renameConversation(String conversationId, ConversationRenameRequest request);
+  Mono<String> renameConversation(String conversationId, String userId, ConversationRenameRequest request);
 
   /**
    * 删除会话。
