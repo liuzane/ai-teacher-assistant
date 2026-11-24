@@ -13,7 +13,7 @@ ENV JAVA_OPTS="-Xms256m -Xmx512m"
 ENV SPRING_PROFILES_ACTIVE=prod
 
 # 默认使用 Maven 打包产物，可通过 --build-arg JAR_FILE=xxx.jar 覆盖
-ARG JAR_FILE=target/aiteacherassistant-0.0.1-SNAPSHOT.jar
+ARG JAR_FILE=target/aiteachingassistant-0.0.1-SNAPSHOT.jar
 COPY ${JAR_FILE} /app/app.jar
 
 # 与 application.yaml 中的 server.port 保持一致

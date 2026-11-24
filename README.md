@@ -1,4 +1,4 @@
-# AI Teacher Assistant
+# AI Teaching Assistant
 
 English | [简体中文](README-zh.md)
 
@@ -46,9 +46,9 @@ Request flow for a chat message:
 ## Project Structure
 
 ```text
-ai-teacher-assistant/
+ai-teaching-assistant/
 ├── server/                       # Spring Boot backend
-│   ├── src/main/java/com/liuzane/aiteacherassistant/
+│   ├── src/main/java/com/liuzane/aiteachingassistant/
 │   │   ├── controller/           # Auth, User, Dify, Hello endpoints
 │   │   ├── service/              # Dify chat/conversation, auth, user
 │   │   ├── filter/               # JwtAuthenticationFilter
@@ -195,26 +195,26 @@ Tips for a good knowledge base:
 ```bash
 # Backend (context is server/, the Dockerfile copies the Maven artifact)
 cd server && ./mvnw -B -DskipTests clean package && cd ..
-docker build -t ai-teacher-assistant-server:latest -f server/Dockerfile server/
+docker build -t ai-teaching-assistant-server:latest -f server/Dockerfile server/
 
 # Frontend (build first, then copy dist/ and nginx.conf)
 cd web && npm ci && npm run build && cd ..
-docker build -t ai-teacher-assistant-web:latest -f web/Dockerfile web/
+docker build -t ai-teaching-assistant-web:latest -f web/Dockerfile web/
 ```
 
 ### Run containers
 
 ```bash
-docker run -d --name ai-teacher-assistant-server \
+docker run -d --name ai-teaching-assistant-server \
   -p 8080:8080 \
   -e SPRING_PROFILES_ACTIVE=prod \
   -e JAVA_OPTS="-Xms256m -Xmx512m" \
-  ai-teacher-assistant-server:latest
+  ai-teaching-assistant-server:latest
 
-docker run -d --name ai-teacher-assistant-web \
+docker run -d --name ai-teaching-assistant-web \
   -p 80:80 \
-  -e BACKEND_ORIGIN=http://ai-teacher-assistant-server:8080 \
-  ai-teacher-assistant-web:latest
+  -e BACKEND_ORIGIN=http://ai-teaching-assistant-server:8080 \
+  ai-teaching-assistant-web:latest
 ```
 
 The frontend image serves static files through Nginx, falls back to `index.html` for client-side routes, proxies `/api/` to the backend, and disables buffering for SSE responses.

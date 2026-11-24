@@ -1,22 +1,22 @@
 services:
-  ai-teacher-assistant-server:
-    image: ai-teacher-assistant-server:${SERVER_IMAGE_TAG:-latest}
-    container_name: ai-teacher-assistant-server
+  ai-teaching-assistant-server:
+    image: ai-teaching-assistant-server:${SERVER_IMAGE_TAG:-latest}
+    container_name: ai-teaching-assistant-server
     restart: unless-stopped
 
     networks:
       - app_network
       - database_network
 
-  ai-teacher-assistant-web:
-    image: ai-teacher-assistant-web:${WEB_IMAGE_TAG:-latest}
-    container_name: ai-teacher-assistant-web
+  ai-teaching-assistant-web:
+    image: ai-teaching-assistant-web:${WEB_IMAGE_TAG:-latest}
+    container_name: ai-teaching-assistant-web
     restart: unless-stopped
     environment:
-      BACKEND_ORIGIN: "http://ai-teacher-assistant-server:8080"
+      BACKEND_ORIGIN: "http://ai-teaching-assistant-server:8080"
 
     depends_on:
-      - ai-teacher-assistant-server
+      - ai-teaching-assistant-server
 
     networks:
       - app_network

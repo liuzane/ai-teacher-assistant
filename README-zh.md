@@ -46,9 +46,9 @@ flowchart LR
 ## 项目结构
 
 ```text
-ai-teacher-assistant/
+ai-teaching-assistant/
 ├── server/                       # Spring Boot 后端
-│   ├── src/main/java/com/liuzane/aiteacherassistant/
+│   ├── src/main/java/com/liuzane/aiteachingassistant/
 │   │   ├── controller/           # Auth、User、Dify、Hello 接口
 │   │   ├── service/              # Dify 对话、鉴权、用户服务
 │   │   ├── filter/               # JwtAuthenticationFilter
@@ -195,26 +195,26 @@ Dify 应用建议按以下流程编排：
 ```bash
 # 后端（构建上下文为 server/，Dockerfile 复制 Maven 产物）
 cd server && ./mvnw -B -DskipTests clean package && cd ..
-docker build -t ai-teacher-assistant-server:latest -f server/Dockerfile server/
+docker build -t ai-teaching-assistant-server:latest -f server/Dockerfile server/
 
 # 前端（先构建，再复制 dist/ 与 nginx.conf）
 cd web && npm ci && npm run build && cd ..
-docker build -t ai-teacher-assistant-web:latest -f web/Dockerfile web/
+docker build -t ai-teaching-assistant-web:latest -f web/Dockerfile web/
 ```
 
 ### 运行容器
 
 ```bash
-docker run -d --name ai-teacher-assistant-server \
+docker run -d --name ai-teaching-assistant-server \
   -p 8080:8080 \
   -e SPRING_PROFILES_ACTIVE=prod \
   -e JAVA_OPTS="-Xms256m -Xmx512m" \
-  ai-teacher-assistant-server:latest
+  ai-teaching-assistant-server:latest
 
-docker run -d --name ai-teacher-assistant-web \
+docker run -d --name ai-teaching-assistant-web \
   -p 80:80 \
-  -e BACKEND_ORIGIN=http://ai-teacher-assistant-server:8080 \
-  ai-teacher-assistant-web:latest
+  -e BACKEND_ORIGIN=http://ai-teaching-assistant-server:8080 \
+  ai-teaching-assistant-web:latest
 ```
 
 前端镜像通过 Nginx 提供静态资源：客户端路由回退到 `index.html`，`/api/` 反向代理到后端，并针对 SSE 关闭缓冲、放宽超时。
