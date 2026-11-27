@@ -10,7 +10,10 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.liuzane.aiteachingassistant.mapper.StudentTextbookConfigMapper;
 import com.liuzane.aiteachingassistant.model.dto.response.WorkflowRunDetailResponse;
+import com.liuzane.aiteachingassistant.model.entity.StudentTextbookConfig;
 import com.liuzane.aiteachingassistant.service.DifyChatService;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -45,6 +48,8 @@ public class DifyChatServiceImpl implements DifyChatService {
 
   private final RedisTemplate<String, String> redisTemplate;
 
+  private final StudentTextbookConfigMapper studentTextbookConfigMapper;
+
   private final WebClient webClient = WebClient.create();
   private final ObjectMapper objectMapper = new ObjectMapper();
   private Boolean thinking = false;
@@ -63,7 +68,7 @@ public class DifyChatServiceImpl implements DifyChatService {
     Map<String, Object> body = new HashMap<>();
     body.put("query", query);
     body.put("user", userId);
-    body.put("inputs", new HashMap<>());
+    body.put("inputs", buildInputs());
     body.put("response_mode", "streaming");
     if (conversationId != null && !conversationId.isBlank()) {
       body.put("conversation_id", conversationId);
@@ -130,6 +135,25 @@ public class DifyChatServiceImpl implements DifyChatService {
         .bodyValue(body)
         .exchangeToMono(response -> handleResponse(response,
             respBody -> objectMapper.readTree(respBody).path("result").asText(), "停止对话消息生成"));
+  }
+
+  /**
+   * 构建 Dify 的 inputs 参数：读取 student_textbook_config 表的一条配置，
+   * 将除 id、createTime、updateTime 之外的字段放入 inputs。
+   */
+  private Map<String, Object> buildInputs() {
+    Map<String, Object> inputs = new HashMap<>();
+    StudentTextbookConfig config = studentTextbookConfigMapper.selectOne(
+        new LambdaQueryWrapper<StudentTextbookConfig>().last("LIMIT 1"));
+    if (config == null) {
+      return inputs;
+    }
+    if (config.getGrade() != null) {
+      inputs.put("grade", config.getGrade());
+    }
+    inputs.put("chinese_textbook_version", config.getChineseTextbookVersion());
+    inputs.put("english_textbook_version", config.getEnglishTextbookVersion());
+    return inputs;
   }
 
   /**
